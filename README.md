@@ -9,38 +9,86 @@ Three components:
 
 2. The backend runs, manages and gathers statistics for tasks
 
-3. The web application serves the osm data produced by all tasks
+3. The web application serves the osm data produced by the tasks
 
 
 ## API Specification
 
-Endpoints:
+Endpoints: Add, Delete, Get
 
-Add, Delete, Get
+Prefer GET-Requests. Minimum length: 2KB (Safari), Maximum length: 8KB (Firefox)
+
+Allow POST-Requests for large WKT-Strings.
 
 
 ### Add task
 
-/add/?name=&coverage=
+/add/?name=&coverage=&bbox=&expirationDate=
 
-- name should only allow [a-zA-Z]
+/add/?name=indonesia&coverage="POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))"
 
-- coverage should be a polygon in WKT-format
+/add/?name=indonesia&bbox=94.972,-11.009,141.012,6.077&expirationDate=2020-01-01T23:59:59+02:00
+
+
+#### Parameters
+
+- *name*: character string [a-zA-Z]
+- *bounding box* (bbox): WGS84 decimal coordinates [minx, miny, maxx, maxy]
+- *coverage*: a polygon in WKT-format
+	- maximum nodes: 1000
+- *expirationDate*: timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
+
+If both bounding box and coverage are supplied, bbox is be preferred.
+
+
+#### Response
+
+- status code [int]
+- status message [string]
+- summary of the tasks properties
+	- name [string]
+	- id [int]
+	- coverage [WKT polygon]
+	- bounding box [minx,maxx,miny,maxy]
+	- expiration date
+	- URL to final product [string]
 
 
 ### Delete task
-- by ID
+
+#### Parameters
+
+- *id* [int]
+
+#### Response
+
+- status code [int]
+- status message [string]
+
 
 ### Get information about tasks
-- by ID
-- by name (-> multiple matches prints multiple tasks)
+
+#### Parameters
+- *id* [int]
+- *name* [string] 
+	- multiple matches prints multiple tasks
+
+#### Response
+
+- status code [int]
+- status message [string]
+- list of tasks found with properties:
+	- name [string]
+	- id [int]
+	- coverage [WKT polygon]
+	- bounding box [minx,maxx,miny,maxy]
+	- URL to final product [string]
+	- runtime statistics [string]
 
 
 ### Authentication
 
-Token-based
-
-
+Token-based, to be specified
 
 
 
@@ -58,11 +106,17 @@ Two main files keep track of the application state:
 
 1. tasklist.csv
 	- stores all information about tasks
-	- header: id, name, url, coverage, lastupdated, average runtime, valid until
+	- header: id, name, url, bbox, coverage, lastUpdated, averageRuntime, addedDate, expirationDate
 
 2. taskstats.csv
 	- stores all benchmarks
 	- header: timestamp, taskID, timing
+
+Format:
+- all dates in ISO 8601 format.
+- bounding box (bbox): WGS84 coordinates [minx, maxx, miny, maxy]
+- coverage: a polygon in WKT-format
+- timing: seconds
 
 
 
