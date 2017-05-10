@@ -1,4 +1,4 @@
-# Real-time OSM
+# Real-time OSM [DRAFT]
 
 A service providing live OSM data.
 
@@ -39,6 +39,9 @@ Add, Delete, Get
 ### Authentication
 
 Token-based
+
+
+
 
 
 
@@ -95,21 +98,21 @@ osmosis --read-apidb-current authFile="authfile" \
 
 Sample command, extracts up-to-date data for a polygon:
 
-´
+`
 osmosis --read-apidb-current authFile="authfile" \
 							 host="1.2.3.4" \
 							 database="osm" \
 		--bounding-polygon file="indonesia.poly" \
 		--write-pbd file="country.osm.pbf" \
 					compress="deflate"
-´
+`
 
 
 Generate highly simplified sample polygon file for indonesia:
-´
+`
 wget http://biogeo.ucdavis.edu/data/gadm2.8/gpkg/IDN_adm_gpkg.zip
 unzip IDN_adm_gpkg.zip
 python2 ogr2poly.py IDN_adm.gpkg IDN_adm0 -s 1000
 rm IDN_adm_gpkg.zip IDN_adm.gpkg license.txt
 mv IDN_adm_0.poly indonesia.poly
-´
+`
