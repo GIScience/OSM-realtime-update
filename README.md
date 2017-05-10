@@ -84,20 +84,17 @@ Two main files keep track of the application state:
 # Osmosis Commands
 
 Sample command, extracts up-to-date data for indonesia's bounding box:
-
-´
+`
 osmosis --read-apidb-current authFile="authfile" \
 							 host="1.2.3.4" \
 							 database="osm" \
 		--bounding-polygon file="indonesia.poly" \
 		--write-pbd file="country.osm.pbf" \
 					compress="deflate"
-´
-
-
+`
+&nbsp;
 
 Sample command, extracts up-to-date data for a polygon:
-
 `
 osmosis --read-apidb-current authFile="authfile" \
 							 host="1.2.3.4" \
@@ -106,7 +103,7 @@ osmosis --read-apidb-current authFile="authfile" \
 		--write-pbd file="country.osm.pbf" \
 					compress="deflate"
 `
-
+&nbsp;
 
 Generate highly simplified sample polygon file for indonesia:
 `
