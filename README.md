@@ -151,7 +151,7 @@ Generate highly simplified sample polygon file for Indonesia:
 `
 wget http://biogeo.ucdavis.edu/data/gadm2.8/gpkg/IDN_adm_gpkg.zip
 unzip IDN_adm_gpkg.zip
-python2 ogr2poly.py IDN_adm.gpkg IDN_adm0 -s 1000
+python2 tools/ogr2poly.py IDN_adm.gpkg IDN_adm0 -s 1000
 rm IDN_adm_gpkg.zip IDN_adm.gpkg license.txt
 mv IDN_adm_0.poly indonesia.poly
 `
