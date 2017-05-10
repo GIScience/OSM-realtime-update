@@ -23,20 +23,20 @@ Allow POST-Requests for large WKT-Strings.
 
 ### Add task
 
-/add/?name=&coverage=&bbox=&expirationDate=
+`/add/?name=&coverage=&bbox=&expirationDate=`
 
-/add/?name=indonesia&coverage="POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))"
+`/add/?name=indonesia&coverage="POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))"`
 
-/add/?name=indonesia&bbox=94.972,-11.009,141.012,6.077&expirationDate=2020-01-01T23:59:59+02:00
+`/add/?name=indonesia&bbox=94.972,-11.009,141.012,6.077&expirationDate=2020-01-01T23:59:59+02:00`
 
 
 #### Parameters
 
-- *name*: character string [a-zA-Z]
+- *name:* character string [a-zA-Z]
 - *bounding box* (bbox): WGS84 decimal coordinates [minx, miny, maxx, maxy]
-- *coverage*: a polygon in WKT-format
+- *coverage:* a polygon in WKT-format
 	- maximum nodes: 1000
-- *expirationDate*: timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
+- *expirationDate:* timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
 
 If both bounding box and coverage are supplied, bbox is be preferred.
 
@@ -50,8 +50,10 @@ If both bounding box and coverage are supplied, bbox is be preferred.
 	- id [int]
 	- coverage [WKT polygon]
 	- bounding box [minx,maxx,miny,maxy]
-	- expiration date
+	- expiration date [YYYY-MM-DDTHH:MM:SS+HH:MM]
 	- URL to final product [string]
+
+&nbsp;
 
 
 ### Delete task
@@ -64,6 +66,8 @@ If both bounding box and coverage are supplied, bbox is be preferred.
 
 - status code [int]
 - status message [string]
+
+&nbsp;
 
 
 ### Get information about tasks
@@ -92,6 +96,10 @@ Token-based, to be specified
 
 
 
+
+&nbsp;
+
+&nbsp;
 
 ## Backend Specification
 
@@ -135,7 +143,18 @@ Format:
 	- for each task, request diffs from the GIScience intranet OSM database and
 	  apply to the task's data files
 
-# Osmosis Commands
+&nbsp;
+
+# Commands
+
+Generate highly simplified sample polygon file for indonesia:
+`
+wget http://biogeo.ucdavis.edu/data/gadm2.8/gpkg/IDN_adm_gpkg.zip
+unzip IDN_adm_gpkg.zip
+python2 ogr2poly.py IDN_adm.gpkg IDN_adm0 -s 1000
+rm IDN_adm_gpkg.zip IDN_adm.gpkg license.txt
+mv IDN_adm_0.poly indonesia.poly
+`
 
 Sample command, extracts up-to-date data for indonesia's bounding box:
 `
@@ -159,11 +178,3 @@ osmosis --read-apidb-current authFile="authfile" \
 `
 &nbsp;
 
-Generate highly simplified sample polygon file for indonesia:
-`
-wget http://biogeo.ucdavis.edu/data/gadm2.8/gpkg/IDN_adm_gpkg.zip
-unzip IDN_adm_gpkg.zip
-python2 ogr2poly.py IDN_adm.gpkg IDN_adm0 -s 1000
-rm IDN_adm_gpkg.zip IDN_adm.gpkg license.txt
-mv IDN_adm_0.poly indonesia.poly
-`
