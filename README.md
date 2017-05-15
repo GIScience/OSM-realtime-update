@@ -181,7 +181,8 @@ Format:
 2. Is there an initial .pbf-file?
    a) Yes: Update the file using osmupdate (+timing)
    b) No: Generate initial .pbf-file:
-	  - download smallest Geofabrik extract that covers the task [1](https://github.com/BikeCitizens/geofabrik-extracts)
+	  - download smallest Geofabrik extract that covers the task
+[1](https://github.com/BikeCitizens/geofabrik-extracts)
       - clip extract using the task polygon/bbox
       - go to step 2a)
 
