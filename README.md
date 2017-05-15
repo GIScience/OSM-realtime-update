@@ -171,7 +171,7 @@ Format:
 ### Update algorithm for each task
 
 1. Is an update process running for this task?
-   a) Yes: Abort
+   - a: Yes: Abort
    b) No: go to step 2 and start update
 
 2. Is there an initial .pbf-file?
