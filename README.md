@@ -154,23 +154,18 @@ Format:
 
 **Strategy 4 was chosen based on performance.**
 
-1. 
-    - keep an up-to-date copy of the real-time global OSM file from the GIScience intranet
+1.  - keep an up-to-date copy of the real-time global OSM file from the GIScience intranet
     - for each task, clip data based on tasks polygon, update file that is
       served by the task URL
 
-2. 
-    - for each task, directly request the task's data from the GIScience
+2.  - for each task, directly request the task's data from the GIScience
       intranet OSM database and save data to file that is served by the task URL
 
-3.  
-    - for each task, request diffs from the GIScience intranet OSM database and
+3.  - for each task, request diffs from the GIScience intranet OSM database and
       apply to the task's data files
 
-4.  
-	- for each task, initialise by downloading a .pbf from Geofabrik and update
+4.  - for each task, initialise by downloading a suitable .pbf from Geofabrik and update
       it using osmupdate 
-	- find region by polygon
 
 
 ### Update algorithm for each task
@@ -182,7 +177,8 @@ Format:
 2. Is there an initial .pbf-file?
    a) Yes: Update the file using osmupdate (+timing)
    b) No: Generate initial .pbf-file:
-	  - download smallest Geofabrik extract that covers the task: https://github.com/BikeCitizens/geofabrik-extracts
+	  - download smallest Geofabrik extract that covers the task 
+[1](https://github.com/BikeCitizens/geofabrik-extracts)
       - clip extract using the task polygon/bbox
       - go to step 2a)
 
