@@ -1,57 +1,52 @@
 # Real-time OSM [DRAFT]
 
-A service providing live OSM data.
+A service providing real-time OSM data.
 
 Three components:
 
-1. The API adds, deletes and gets information about tasks that provide region-bound real-time
+1. The API adds, deletes and requests information about tasks that provide region-bound real-time
    OSM data in PBF file format via a permanent URL
 
 2. The backend runs, manages and gathers statistics for tasks
 
-3. The web application serves the osm data produced by the tasks
+3. The web application serves the OSM data produced by the tasks
 
 
 ## API Specification
 
-Endpoints: Add, Delete, Get
+*Main collection: /tasks/*
 
-Prefer GET-Requests. Minimum length: 2KB (Safari), Maximum length: 8KB (Firefox)
-
-Allow POST-Requests for large WKT-Strings.
+*Individual resource: /tasks/:id/*
 
 
 ### Add task
 
-`/add/?name=&coverage=&bbox=&expirationDate=`
+* *URL*: /tasks/
 
-`/add/?name=indonesia&coverage="POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))"`
+* *Method*: POST
 
-`/add/?name=indonesia&bbox=94.972,-11.009,141.012,6.077&expirationDate=2020-01-01T23:59:59+02:00`
+* *Parameters*
 
+	- *name:* character string [a-zA-Z]
+	- *bounding box* (bbox): WGS84 decimal coordinates [minx, miny, maxx, maxy]
+	- *coverage:* a polygon in WKT-format
+		- maximum nodes: 1000
+	- *expirationDate:* timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
 
-#### Parameters
-
-- *name:* character string [a-zA-Z]
-- *bounding box* (bbox): WGS84 decimal coordinates [minx, miny, maxx, maxy]
-- *coverage:* a polygon in WKT-format
-    - maximum nodes: 1000
-- *expirationDate:* timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
-
-If both bounding box and coverage are supplied, bbox is be preferred.
+	If both bounding box and coverage are supplied, bbox is be preferred.
 
 
-#### Response
+* Response
 
-- status code [int]
-- status message [string]
-- summary of the tasks properties
-    - name [string]
-    - id [int]
-    - coverage [WKT polygon]
-    - bounding box [minx,maxx,miny,maxy]
-    - expiration date [YYYY-MM-DDTHH:MM:SS+HH:MM]
-    - URL to final product [string]
+	- status code [int]
+	- status message [string]
+	- summary of the tasks properties
+		- name [string]
+		- id [int]
+		- coverage [WKT polygon]
+		- bounding box [minx,maxx,miny,maxy]
+		- expiration date [YYYY-MM-DDTHH:MM:SS+HH:MM]
+		- URL to final product [string]
 
 &nbsp;
 
@@ -101,6 +96,9 @@ Token-based, to be specified
 
 &nbsp;
 
+
+
+
 ## Backend Specification
 
 ### Data storage 
@@ -114,7 +112,8 @@ Two main files keep track of the application state:
 
 1. tasklist.csv
     - stores all information about tasks
-    - header: id, name, url, bbox, coverage, lastUpdated, averageRuntime, addedDate, expirationDate
+	- header: id, name, url, bbox, coverage, lastUpdated, averageRuntime,
+	  addedDate, expirationDate
 
 2. taskstats.csv
     - stores all benchmarks
@@ -143,7 +142,12 @@ Format:
     - for each task, request diffs from the GIScience intranet OSM database and
       apply to the task's data files
 
+4.
+	- for each task, initialise by downloading a .pbf from Geofabrik and update it using osmupdate
+	- find region by polygon: https://github.com/BikeCitizens/geofabrik-extracts
+
 &nbsp;
+
 
 # Commands
 
