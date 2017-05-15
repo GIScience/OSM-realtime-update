@@ -21,9 +21,9 @@ Individual resource: /tasks/:id/
 
 ### Add task
 
-URL    | /tasks/
-       |
-Method | POST
+|  URL    | /tasks/ |
+
+|  Method | POST    |
 
 * Parameters
 
