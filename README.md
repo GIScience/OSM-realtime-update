@@ -169,7 +169,7 @@ Format:
 
 4.
 	- for each task, initialise by downloading a .pbf from Geofabrik and update it using osmupdate
-	- find region by polygon: https://github.com/BikeCitizens/geofabrik-extracts
+	- find region by polygon
 
 
 ### Update algorithm for each task
