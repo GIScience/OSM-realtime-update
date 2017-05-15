@@ -110,12 +110,11 @@ Individual resource: `/tasks/:id`
 
 
 
-### Authentication
+#### Authentication
 
 Token-based, to be specified
 
 
-&nbsp;
 
 &nbsp;
 
@@ -124,7 +123,7 @@ Token-based, to be specified
 
 ## Backend Specification
 
-### Data storage 
+#### Data storage 
 
 File-based. 
 
@@ -150,7 +149,7 @@ Format:
 
 
 
-### Update strategies
+#### Update strategies
 
 **Strategy 4 was chosen based on performance.**
 
@@ -168,7 +167,7 @@ Format:
       it using osmupdate 
 
 
-### Update algorithm for each task
+#### Update algorithm for each task
 
 1. Is an update process running for this task?
    - Yes: Abort
