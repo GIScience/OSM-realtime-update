@@ -22,7 +22,6 @@ Individual resource: /tasks/:id/
 ### Add task
 
 |  URL    | /tasks/ |
-|  -----  | ------
 |  Method | POST    |
 
 | header 1 | header 2 |
