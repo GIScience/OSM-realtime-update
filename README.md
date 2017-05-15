@@ -19,15 +19,11 @@ Main collection: /tasks/
 Individual resource: /tasks/:id/
 
 
-### Add task
+#### Add task
 
-|  URL    | /tasks/ |
-|  Method | POST    |
+* URL: /tasks/
 
-| header 1 | header 2 |
-| -------- | -------- |
-| cell 1   | cell 2   |
-| cell 3   | cell 4   |
+* Method: POST
 
 * Parameters
 
@@ -38,6 +34,15 @@ Individual resource: /tasks/:id/
 	- *expirationDate:* timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
 
 	If both bounding box and coverage are supplied, bbox is be preferred.
+
+	- Examples
+
+		`/add/?name=&coverage=&bbox=&expirationDate=`
+
+		`/add/?name=indonesia&coverage="POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))"`
+
+		`/add/?name=indonesia&bbox=94.972,-11.009,141.012,6.077&expirationDate=2020-01-01T23:59:59+02:00`
+
 
 
 * Response
@@ -55,7 +60,7 @@ Individual resource: /tasks/:id/
 &nbsp;
 
 
-### Delete task
+#### Delete task
 
 #### Parameters
 
