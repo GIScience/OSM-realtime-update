@@ -14,18 +14,18 @@ Three components:
 
 ## API Specification
 
-*Main collection: /tasks/*
+Main collection: /tasks/
 
-*Individual resource: /tasks/:id/*
+Individual resource: /tasks/:id/
 
 
 ### Add task
 
-* **URL**: /tasks/
+URL    | /tasks/
+       |
+Method | POST
 
-* *Method*: POST
-
-* *Parameters*
+* Parameters
 
 	- *name:* character string [a-zA-Z]
 	- *bounding box* (bbox): WGS84 decimal coordinates [minx, miny, maxx, maxy]
