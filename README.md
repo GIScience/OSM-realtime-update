@@ -168,7 +168,8 @@ Format:
       apply to the task's data files
 
 4.
-	- for each task, initialise by downloading a .pbf from Geofabrik and update it using osmupdate
+	- for each task, initialise by downloading a .pbf from Geofabrik and update
+      it using osmupdate 
 	- find region by polygon
 
 
