@@ -21,7 +21,7 @@ Three components:
 
 ### Add task
 
-* *URL*: /tasks/
+* **URL**: /tasks/
 
 * *Method*: POST
 
