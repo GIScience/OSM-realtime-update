@@ -171,16 +171,16 @@ Format:
 ### Update algorithm for each task
 
 1. Is an update process running for this task?
-   - a: Yes: Abort
-   b) No: go to step 2 and start update
+   - Yes: Abort
+   - No: go to step 2 and start update
 
 2. Is there an initial .pbf-file?
-   a) Yes: Update the file using osmupdate (+timing)
-   b) No: Generate initial .pbf-file:
+   - Yes: Update the file using osmupdate (+timing)
+   - No: Generate initial .pbf-file:
 	  - download smallest Geofabrik extract that covers the task 
 [(sample code)](https://github.com/BikeCitizens/geofabrik-extracts)
       - clip extract using the task polygon/bbox
-      - go to step 2a)
+      - go to step 2
 
 &nbsp;
 
