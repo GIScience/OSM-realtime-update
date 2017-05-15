@@ -167,7 +167,7 @@ Format:
     - for each task, request diffs from the GIScience intranet OSM database and
       apply to the task's data files
 
-4.
+4.  
 	- for each task, initialise by downloading a .pbf from Geofabrik and update
       it using osmupdate 
 	- find region by polygon
