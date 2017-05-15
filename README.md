@@ -47,6 +47,10 @@ Individual resource: `/tasks/:id`
 		- expiration date [YYYY-MM-DDTHH:MM:SS+HH:MM]
 		- URL to final product [string]
 
+* Example:
+
+	**ToDo**
+
 &nbsp;
 
 
@@ -64,6 +68,10 @@ Individual resource: `/tasks/:id`
 
 	- status code [int]
 	- status message [string]
+
+* Example:
+
+	**ToDo**
 
 &nbsp;
 
@@ -96,13 +104,15 @@ Individual resource: `/tasks/:id`
 		- URL to final product [string]
 		- runtime statistics [string]
 
+* Example:
+
+	**ToDo**
+
 
 
 ### Authentication
 
 Token-based, to be specified
-
-
 
 
 &nbsp;
@@ -142,6 +152,8 @@ Format:
 
 ### Update strategies
 
+**Strategy 4 was chosen based on performance.**
+
 1. 
     - keep an up-to-date copy of the real-time global OSM file from the GIScience intranet
     - for each task, clip data based on tasks polygon, update file that is
@@ -155,9 +167,23 @@ Format:
     - for each task, request diffs from the GIScience intranet OSM database and
       apply to the task's data files
 
-**4.
+4.
 	- for each task, initialise by downloading a .pbf from Geofabrik and update it using osmupdate
-	- find region by polygon: https://github.com/BikeCitizens/geofabrik-extracts**
+	- find region by polygon: https://github.com/BikeCitizens/geofabrik-extracts
+
+
+### Update algorithm for each task
+
+1. Is an update process running for this task?
+   a) Yes: Abort
+   b) No: go to step 2 and start update
+
+2. Is there an initial .pbf-file?
+   a) Yes: Update the file using osmupdate (+timing)
+   b) No: Generate initial .pbf-file:
+	  - download smallest Geofabrik extract that covers the task [1](https://github.com/BikeCitizens/geofabrik-extracts)
+      - clip extract using the task polygon/bbox
+      - go to step 2a)
 
 &nbsp;
 
