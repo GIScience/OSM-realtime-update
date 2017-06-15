@@ -1,0 +1,25 @@
+{
+  "name": "realtime_osm_api",
+  "version": "0.1.0",
+  "description": "API server that manages tasks to provide realtime osm data",
+  "main": "api.js",
+  "scripts": {
+    "start": "nodemon --inspect api.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.gistools.geog.uni-heidelberg.de/giscience/realtime_osm/realtime_osm"
+  },
+  "author": "Stefan Eberlein",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.17.2",
+    "express": "^4.15.3",
+    "morgan": "^1.8.2",
+    "sqlite3": "^3.1.8",
+    "terraformer-wkt-parser": "^1.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^1.11.0"
+  }
+}

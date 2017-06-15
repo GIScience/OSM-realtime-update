@@ -28,28 +28,23 @@ Individual resource: `/tasks/:id`
 * Request Parameters:
 
 	- *name:* character string [a-zA-Z]
-	- *bounding box* (bbox): WGS84 decimal coordinates [minx, miny, maxx, maxy]
 	- *coverage:* a polygon in WKT-format
 		- maximum nodes: 1000
 	- *expirationDate:* timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
 
-	If both bounding box and coverage are supplied, an error is returned.
-
 * Response:
 
 	- status code [int]
-	- status message [string]
-	- summary of the tasks properties
+	- tasks properties
 		- name [string]
 		- id [int]
 		- coverage [WKT polygon]
-		- bounding box [minx,maxx,miny,maxy]
 		- expiration date [YYYY-MM-DDTHH:MM:SS+HH:MM]
 		- URL to final product [string]
 
 * Example:
 
-	**ToDo**
+	`curl --data "name=test&coverage=POLYGON((10 20), (20 30), (30 30), (10 10))&expirationDate=2020-05-01" http://127.0.0.1:1234/tasks`
 
 &nbsp;
 
@@ -60,7 +55,7 @@ Individual resource: `/tasks/:id`
 
 * Method: DELETE
 
-* Request Parameters:
+* Request Parameters
 
 	- *id* [int]
 
@@ -71,7 +66,7 @@ Individual resource: `/tasks/:id`
 
 * Example:
 
-	**ToDo**
+	curl --data "id=5" -X DELETE http://127.0.0.1:1234/tasks
 
 &nbsp;
 
@@ -100,19 +95,23 @@ Individual resource: `/tasks/:id`
 		- name [string]
 		- id [int]
 		- coverage [WKT polygon]
-		- bounding box [minx,maxx,miny,maxy]
 		- URL to final product [string]
 		- runtime statistics [string]
 
 * Example:
 
-	**ToDo**
+	* curl http://127.0.0.1:1234/tasks
 
+	* curl http://127.0.0.1:1234/tasks/2
+
+	* curl http://127.0.0.1:1234/tasks/id=2
+
+	* curl http://127.0.0.1:1234/tasks/name=test1
 
 
 #### Authentication
 
-Token-based, to be specified
+Optional
 
 
 
@@ -125,27 +124,27 @@ Token-based, to be specified
 
 #### Data storage 
 
-File-based. 
+sqlite3-based. 
 
 The OSM data files are stored in a subfolder that is served by
 the web app. File names are generated using name and id.
 
-Two main files keep track of the application state:
+A main database keeps track of the application state, it 
+contains two tables:
 
-1. tasklist.csv
+1. tasks
     - stores all information about tasks
-	- header: id, name, url, bbox, coverage, lastUpdated, averageRuntime,
+	- header: id, name, url, coverage, lastUpdated, averageRuntime,
 	  addedDate, expirationDate
 
-2. taskstats.csv
+2. taskstats
     - stores all benchmarks
     - header: timestamp, taskID, timing
 
 Format:
 - all dates in ISO 8601 format.
-- bounding box (bbox): WGS84 coordinates [minx, maxx, miny, maxy]
 - coverage: a polygon in WKT-format
-- timing: seconds
+- timing: milliseconds
 
 
 
