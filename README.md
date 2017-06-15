@@ -148,25 +148,12 @@ Format:
 
 
 
-#### Update strategies
+#### Update strategy
 
-**Strategy 4 was chosen based on performance.**
+For each task, initialise by downloading a suitable .pbf from Geofabrik and
+update it using osmupdate.
 
-1.  - keep an up-to-date copy of the real-time global OSM file from the GIScience intranet
-    - for each task, clip data based on tasks polygon, update file that is
-      served by the task URL
-
-2.  - for each task, directly request the task's data from the GIScience
-      intranet OSM database and save data to file that is served by the task URL
-
-3.  - for each task, request diffs from the GIScience intranet OSM database and
-      apply to the task's data files
-
-4.  - for each task, initialise by downloading a suitable .pbf from Geofabrik and update
-      it using osmupdate 
-
-
-#### Update algorithm for each task
+Algorithm:
 
 1. Is an update process running for this task?
    - Yes: Abort

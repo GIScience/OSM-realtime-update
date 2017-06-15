@@ -36,11 +36,14 @@ var db = new sqlite3.Database(dbname);
 db.run("CREATE TABLE if not exists tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                                          "name TEXT NOT NULL, " +
                                          "coverage BLOB NOT NULL, " +
-                                         "expirationDate TEXT, " +
                                          "URL TEXT, " +
+                                         "expirationDate TEXT, " +
+                                         "lastUpdated TEXT, " +
+                                         "addedDate TEXT, " +
+                                         "averageRuntime TEXT, " +
                                          "unique(coverage));");
 db.run("CREATE TABLE if not exists taskstats (timestamp TEXT PRIMARY KEY, " +
-                                             "taskID INT, timing INT);");
+                                             "taskID INTEGER, timing INTEGER);");
 
 //// API Implementation
 //
