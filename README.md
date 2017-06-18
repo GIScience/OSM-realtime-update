@@ -170,6 +170,20 @@ Algorithm:
 &nbsp;
 
 
+#### Task management
+
+Possible strategies:
+
+1. A master process checks at a predefined interval if an update for a task
+   is due and spawns a respective update worker if an update is not running
+   for this task. Workers die after an update. How to handle individual update
+   intervals for tasks? Store a 'update due time' information?
+
+2. Workers live longer and care for a specific task including scheduled updates.
+   A master process checks at an interval whether a) workers became obsolet because tasks
+   have been removed or b) a new worker should be spawned because a new task has been added.
+
+
 # Commands
 
 Generate highly simplified sample polygon file for Indonesia:

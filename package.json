@@ -1,10 +1,11 @@
 {
-  "name": "realtime_osm_api",
+  "name": "realtimeOSM",
   "version": "0.1.0",
-  "description": "API server that manages tasks to provide realtime osm data",
-  "main": "api.js",
+  "description": "server that manages and runs tasks to provide realtime osm data",
+  "main": "realtimeOSM.js",
   "scripts": {
-    "start": "nodemon --inspect api.js"
+    "dev": "nodemon --inspect realtimeOSM.js",
+    "start": "nodemon realtimeOSM.js"
   },
   "repository": {
     "type": "git",

@@ -20,9 +20,9 @@ app.use(bodyParser.json());
 var accessLogStream = fs.createWriteStream('access.log', {flags: 'a'});
 
 // new token to log POST body
-morgan.token('body', function (req, res) { return req.body; });
+morgan.token('body', function (req, res) {return "body: " + JSON.stringify(req.body);});
 app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method ' +
-    ':url HTTP/:http-version" :status :res[content-length] :response-time ms ' +
+    ':url :body HTTP/:http-version" :status :res[content-length] :response-time ms ' +
     '":referrer" ":user-agent" ', {stream: accessLogStream}));
 
 // configure listening port
@@ -142,10 +142,10 @@ app.post('/tasks', function (req, res) {
     else {
         // insert new task into database, sorry for callback hell,
         // can't think of another way to serialize. db.serialize did not work.
-        var SQLinsert = db.prepare("INSERT INTO tasks (name, coverage, expirationDate) " +
-               "VALUES (?, ?, ?);", name, coverage, expirationDate);
+        var SQLinsert = db.prepare("INSERT INTO tasks (name, coverage, expirationDate, addedDate) " +
+               "VALUES (?, ?, ?, ?);", name, coverage, expirationDate, Date());
         console.log("POST task; SQL for insertion:", SQLinsert,
-            "\nParameters:", name, coverage, expirationDate);
+            "\nParameters:", name, coverage, expirationDate, Date());
         SQLinsert.run(function getID(err) {
             if(err) {
                 console.log("SQL error:", err);
@@ -175,7 +175,7 @@ app.post('/tasks', function (req, res) {
                 }
                 // generate and update URL
                 var url = "data/" + id + "_" + name + ".pbf";
-                var SQLupdate = db.prepare("UPDATE tasks SET url = ? WHERE id = ?", 
+                var SQLupdate = db.prepare("UPDATE tasks SET URL = ? WHERE id = ?", 
                     url, id);
                 console.log("POST task; SQL for updating URL:", SQLupdate,
                     "\nParameters:", url);
@@ -186,7 +186,7 @@ app.post('/tasks', function (req, res) {
                         return;
                     }
                     // update URL in local variable
-                    rows[0].url = url;
+                    rows[0].URL = url;
                     res.json(rows[0]);
                 });
             });
