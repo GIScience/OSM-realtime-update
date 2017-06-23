@@ -195,7 +195,7 @@ Worker.prototype.createInitialDatafile = function() {
         console.log("Clippediclipp.");
     };
     clipFile.bind(this)();
-    const wget = execFile('wget', ['-O', this.task.URL, geofabrikBase + suffix],
+    this.wgetInitialFile = execFile('wget', ['-O', this.task.URL, geofabrikBase + suffix],
         function (error, stdout, stderr) {
             if (error) {
                 logToConsole(`exec error: ${error}`);
@@ -214,6 +214,7 @@ Worker.prototype.createInitialDatafile = function() {
             //} else logToConsole("[updateTask] Successfully updated task", this.task.id);
             // update data
             this.updateTask();
+            delete this.wgetInitialFile;
         }.bind(this));
     // ToDo clip extract!
     // generate poly file, clip with osmconvert
@@ -226,6 +227,10 @@ Worker.prototype.updateTask = function() {
     logToConsole("[updateTask] Starting update for task", this.task.id);
     if(this.updateProcess !== undefined) {
         logToConsole(`[updateTask] Update for task ${this.task.id} already running.`);
+        return;
+    }
+    if(this.wgetInitialFile !== undefined) {
+        logToConsole(`[updateTask] Initial download for task ${this.task.id} running.`);
         return;
     }
 
