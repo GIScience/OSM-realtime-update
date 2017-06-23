@@ -8,6 +8,8 @@ const morgan = require('morgan');   // library for logging
 const fs = require("fs");           // file system access for logging
 const sqlite3 = require('sqlite3').verbose(); // database access
 const WKT = require('wellknown'); // WKT parsing
+const geojsonhint = require('geojsonhint'); // validate GeoJSONs
+const geojsonrewind = require('geojson-rewind'); // fix right-hand rule for GeoJSONs
 const log = true;
 
 function logToConsole() {
@@ -58,7 +60,7 @@ api.db.run("CREATE TABLE if not exists taskstats (timestamp TEXT PRIMARY KEY, " 
 //
 //
 
-app.get('api/tasks', function (req, res) {
+app.get('/api/tasks', function (req, res) {
     // responds with an array of all tasks
     if(req.query.name) {
         res.redirect('/tasks/name='+req.query.name);
@@ -77,7 +79,7 @@ app.get('api/tasks', function (req, res) {
     });
 });
 
-app.get(['api/tasks/name=:name'], function (req, res) {
+app.get(['/api/tasks/name=:name'], function (req, res) {
     // responds with the task whose name matches the one given
     logToConsole("/tasks/name=:name, params:", req.params);
     var SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ?", req.params.name);
@@ -92,7 +94,7 @@ app.get(['api/tasks/name=:name'], function (req, res) {
     });
 });
 
-app.get(['api/tasks/id=:id', '/tasks/:id'], function (req, res) {
+app.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
     // responds with the task whose id matches the one given
     logToConsole("/tasks/id=:id, params:", req.params);
     var SQLselect = api.db.prepare("SELECT * FROM tasks WHERE id == ?", req.params.id);
@@ -107,7 +109,7 @@ app.get(['api/tasks/id=:id', '/tasks/:id'], function (req, res) {
     });
 });
 
-app.delete('api/tasks', function (req, res) {
+app.delete('/api/tasks', function (req, res) {
     var SQLdelete = api.db.prepare("DELETE FROM tasks WHERE id == ?", req.body.id);
     logToConsole("DELETE tasks; SQL statement to be run:", SQLdelete, 
         "\nParameter:", req.body.id);
@@ -120,7 +122,7 @@ app.delete('api/tasks', function (req, res) {
     });
 });
 
-app.post('api/tasks', function (req, res) {
+app.post('/api/tasks', function (req, res) {
     // tries to add a task to the database, validates input
     
     // validation
@@ -132,16 +134,30 @@ app.post('api/tasks', function (req, res) {
     logToConsole("req.body", req.body);
     if (!name || name.match(/^[a-zA-Z0-9]+$/) === null) 
         errorlist.push("name [a-zA-Z]");
-    try {
-        var polygon = WKT.parse(coverage);
-        if(polygon.coordinates.reduce((result, subpoly) => 
-                                        subpoly.length + result, 0) > 10000) {
-            throw new Error("Polygon has more that 10000 nodes.");
+    if (typeof(req.body.coverage) != "object") {
+        try {
+            coverage = WKT.parse(coverage);
+            if(coverage.coordinates.reduce((result, subpoly) => 
+                                            subpoly.length + result, 0) > 10000) {
+                throw new Error("Polygon has more that 10000 nodes.");
+            }
+        } catch (e) {
+            logToConsole("Error parsing WKT coverage while adding task. Coverage:\n", 
+                coverage, "\n", e);
+            errorlist.push("coverage [WKT string / GeoJSON]");
         }
-    } catch (e) {
-        logToConsole("Error parsing WKT coverage while adding task. Coverage:\n", 
-            coverage, "\n", e);
-        errorlist.push("coverage [WKT string]");
+    }
+
+    var hint = geojsonhint.hint(coverage);
+    if (hint.length > 0) {
+        if(hint[0].message.match("right-hand rule")) {
+            coverage = geojsonrewind(coverage);
+            hint = geojsonhint.hint(coverage);
+        }
+        if (hint.length > 0) {
+            errorlist.push("coverage: invalid polygon", 
+                           JSON.stringify(geojsonhint.hint(coverage)));
+        }
     }
 
     if (expirationDate && isNaN(Date.parse(expirationDate)))
@@ -158,7 +174,8 @@ app.post('api/tasks', function (req, res) {
         // can't think of another way to serialize. db.serialize did not work.
         var SQLinsert = api.db.prepare(
             `INSERT INTO tasks (name, coverage, expirationDate, addedDate, updateInterval) 
-            VALUES (?, ?, ?, ?, ?);`, name, coverage, expirationDate, Date(), updateInterval);
+            VALUES (?, ?, ?, ?, ?);`, 
+            name, JSON.stringify(coverage), expirationDate, Date(), updateInterval);
         logToConsole("POST task; SQL for insertion:", SQLinsert,
             "\nParameters:", name, coverage, expirationDate, Date(), updateInterval);
         SQLinsert.run(function getID(err) {
@@ -171,7 +188,7 @@ app.post('api/tasks', function (req, res) {
             // get id
             var id;
             var SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ? AND " +
-                "coverage == ?", name, coverage);
+                "coverage == ?", name, JSON.stringify(coverage));
             logToConsole("POST task; SQL for id select;", SQLselect,
                 "\nParameters:", name, coverage);
             SQLselect.all(function updateURL(err, rows) {
@@ -189,7 +206,7 @@ app.post('api/tasks', function (req, res) {
                     return;
                 }
                 // generate and update URL
-                var url = api.dataDirectory + id + "_" + name + ".pbf";
+                var url = api.dataDirectory + id + "_" + name + ".osm.pbf";
                 var SQLupdate = api.db.prepare("UPDATE tasks SET URL = ? WHERE id = ?", 
                     url, id);
                 logToConsole("POST task; SQL for updating URL:", SQLupdate,
@@ -209,7 +226,7 @@ app.post('api/tasks', function (req, res) {
     }
 });
 
-app.get('api/taskstats', function (req, res) {
+app.get('/api/taskstats', function (req, res) {
     // responds with an array of all task statistics
     logToConsole("GET /taskstats");
     var SQLselect = api.db.prepare("SELECT * FROM taskstats;");
