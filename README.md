@@ -23,24 +23,29 @@ Individual resource: `/tasks/:id`
 
 * URL: `/tasks`
 
-* Method: POST
+* Method: POST: x-www-form-unencoded or raw/JSON
 
 * Request Parameters:
 
 	- *name:* character string [a-zA-Z]
-	- *coverage:* a polygon in WKT-format
-		- maximum nodes: 1000
-	- *expirationDate:* timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
+	- *coverage:* a polygon in WKT-format or JSON
+		- maximum nodes: 10000
+	- *expirationDate (optional):* timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
+    - *updateInterval (optional):* time in seconds
 
 * Response:
 
 	- status code [int]
 	- tasks properties
-		- name [string]
 		- id [int]
+		- name [string]
 		- coverage [WKT polygon]
-		- expiration date [YYYY-MM-DDTHH:MM:SS+HH:MM]
 		- URL to final product [string]
+		- expiration date [YYYY-MM-DDTHH:MM:SS+HH:MM]
+        - updateInterval [int]
+        - lastUpdated [YYYY-MM-DDTHH:MM:SS+HH:MM]
+        - creationDate [YYYY-MM-DDTHH:MM:SS+HH:MM]
+        - averageRuntime [int]
 
 * Example:
 
