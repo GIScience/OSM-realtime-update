@@ -1,3 +1,7 @@
+# TODO
+
+- Swaggerhub Dokumentation erstellen
+- UPDATE "lastUpdated" in tasks.db
 # Real-time OSM [DRAFT]
 
 A service providing real-time OSM data.
