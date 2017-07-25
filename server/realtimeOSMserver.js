@@ -265,7 +265,7 @@ Worker.prototype.createInitialDatafile = function() {
     this.wgetInitialFile = execFile('wget', ['-O', this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
         function (error, stdout, stderr) {
             if (error) {
-                logToConsole(`Wget error: ${error}`);
+                logToConsole(`Wget error: ${error}. Stdout: ${stdout}. Stderr: ${stderr}`);
                 return;
             }
             if (stderr.match("saved")) {
