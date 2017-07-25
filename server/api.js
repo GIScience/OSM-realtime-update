@@ -2,6 +2,7 @@
 "use strict";
 
 const express = require('express');
+const serveIndex = require('serve-index');
 const bodyParser = require('body-parser');
 const api = express();
 const morgan = require('morgan');   // library for logging
@@ -59,6 +60,7 @@ api.db.run("CREATE TABLE if not exists taskstats (timestamp TEXT PRIMARY KEY, " 
 /// serve website
 //
 api.use(express.static('../web/'));
+api.use('/data', serveIndex('./data/', {icons: true, view: "details"}));
 
 
 //

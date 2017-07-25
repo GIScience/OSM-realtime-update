@@ -1,7 +1,7 @@
 # TODO
 
 - Swaggerhub Dokumentation erstellen
-- UPDATE "lastUpdated" in tasks.db
+
 # Real-time OSM [DRAFT]
 
 A service providing real-time OSM data.
@@ -181,49 +181,7 @@ Algorithm:
 
 #### Task management
 
-Possible strategies:
-
-1. A master process checks at a predefined interval if an update for a task
-   is due and spawns a respective update worker if an update is not running
-   for this task. Workers die after an update. How to handle individual update
-   intervals for tasks? Store a 'update due time' information?
-
-2. Workers live longer and care for a specific task including scheduled updates.
-   A master process checks at an interval whether a) workers became obsolet because tasks
-   have been removed or b) a new worker should be spawned because a new task has been added.
-
-
-# Commands
-
-Generate highly simplified sample polygon file for Indonesia:
-`
-wget http://biogeo.ucdavis.edu/data/gadm2.8/gpkg/IDN_adm_gpkg.zip
-unzip IDN_adm_gpkg.zip
-python2 tools/ogr2poly.py IDN_adm.gpkg IDN_adm0 -s 1000
-rm IDN_adm_gpkg.zip IDN_adm.gpkg license.txt
-mv IDN_adm_0.poly indonesia.poly
-`
-&nbsp;
-
-osmosis, extracts up-to-date data for Indonesia's bounding box:
-`
-osmosis --read-apidb-current authFile="authfile" \
-                             host="1.2.3.4" \
-                             database="osm" \
-        --bounding-polygon file="indonesia.poly" \
-        --write-pbd file="indonesia.osm.pbf" \
-                    compress="deflate"
-`
-&nbsp;
-
-osmosis, extracts up-to-date data for a polygon:
-`
-osmosis --read-apidb-current authFile="authfile" \
-                             host="1.2.3.4" \
-                             database="osm" \
-        --bounding-polygon file="indonesia.poly" \
-        --write-pbd file="indonesia.osm.pbf" \
-                    compress="deflate"
-`
-&nbsp;
-
+Workers care for a specific task including scheduled updates. A master process
+manages all workers and checks at an interval whether a) workers became obsolet
+because tasks have been removed or b) a new worker should be spawned because a
+new task has been added.

@@ -281,11 +281,6 @@ Worker.prototype.updateTask = function() {
     var timing = Date.now();
 
     logToConsole("[updateTask] Starting update for task", this.task.id);
-    if(this.controller.workers.filter(worker => 
-        worker.updateProcess !== undefined).length >= this.controller.maxParallelUpdates){
-        logToConsole(`[updateTask ${this.task.id}] Too many parallel updates, aborting.`);
-        return;
-    }
     if(this.updateProcess !== undefined) {
         logToConsole(`[updateTask] Update for task ${this.task.id} already running.`);
         return;
@@ -296,6 +291,12 @@ Worker.prototype.updateTask = function() {
     }
     if(this.wgetInitialFile !== undefined) {
         logToConsole(`[updateTask] Initial download for task ${this.task.id} running.`);
+        return;
+    }
+    if(this.controller.workers.filter(worker => 
+        worker.updateProcess !== undefined).length >= this.controller.maxParallelUpdates){
+        logToConsole(`[updateTask ${this.task.id}] Number of parallel updates exceeds threshold (${this.controller.maxParallelUpdates}), aborting and trying again in 30s.`);
+        setTimeout(this.updateTask.bind(this), 30000);
         return;
     }
 
@@ -327,26 +328,36 @@ Worker.prototype.updateTask = function() {
                     if(mv.stderr.toString() !== '') {
                         logToConsole(`[updateTask] Error moving new file to old file.`,
                                      `mv stderr:\n ${mv.stderr}`);
-                    } else logToConsole("[updateTask] Successfully updated task", this.task.id);
+                    } else {
+                        logToConsole("[updateTask] Successfully updated task", this.task.id);
+                        // insert timing into database
+                        var insertTimingSQL = this.controller.api.db.prepare(
+                            `INSERT INTO taskstats (timestamp, taskID, timing) 
+                                VALUES (?, ?, ?);`, 
+                                new Date().toISOString(), this.task.id, Date.now()-timing);
+                        insertTimingSQL.run(function (err) {
+                            if(err) logToConsole("[updateTask] SQL error:", err);
+                        });
+                        // update timing statistics
+                        var updateTimingStatsSQL = this.controller.api.db.prepare(
+                            `UPDATE tasks 
+                             SET averageRuntime = (SELECT avg(timing) FROM taskstats
+                                                   WHERE taskID = ?)
+                             WHERE id = ?`, this.task.id, this.task.id);
+                        updateTimingStatsSQL.run(function (err) {
+                            if(err) logToConsole("[updateTask] SQL error:", err);
+                        });
+                        // update lastUpdated
+                        var updateLastUpdatedSQL = this.controller.api.db.prepare(
+                            `UPDATE tasks 
+                             SET lastUpdated = ?
+                             WHERE id = ?`, 
+                             new Date().toISOString(), this.task.id);
+                        updateLastUpdatedSQL.run(function (err) {
+                            if(err) logToConsole("[updateTask] SQL error:", err);
+                        });
+                    }
                 }
-                // insert timing into database
-                var insertTimingSQL = this.controller.api.db.prepare(
-                    `INSERT INTO taskstats (timestamp, taskID, timing) 
-                        VALUES (?, ?, ?);`, 
-                        new Date().toISOString(), this.task.id, Date.now()-timing);
-                insertTimingSQL.run(function (err) {
-                    if(err) logToConsole("[updateTask] SQL error:", err);
-                });
-
-                // update timing statistics
-                var updateTimingStatsSQL = this.controller.api.db.prepare(
-                    `UPDATE tasks 
-                     SET averageRuntime = (SELECT avg(timing) FROM taskstats
-                                           WHERE taskID = ?)
-                     WHERE id = ?`, this.task.id, this.task.id);
-                updateTimingStatsSQL.run(function (err) {
-                    if(err) logToConsole("[updateTask] SQL error:", err);
-                });
             }
             delete this.updateProcess;
         }.bind(this));
