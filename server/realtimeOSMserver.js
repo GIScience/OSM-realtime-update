@@ -29,7 +29,7 @@ function logToConsole() {
 function Controller() {
     this.api = api;
     this.workers = [];
-    this.maxParallelUpdates = 3;
+    this.maxParallelUpdates = 5;
     this.geofabrikMetadir = "geofabrikbounds";
     this.geofabrikMetadata = undefined;
     // update geofabrik metadata and update daily
@@ -262,10 +262,10 @@ Worker.prototype.createInitialDatafile = function() {
                                       geofabrikName.length) + "-latest.osm.pbf";
     logToConsole("[createInitialDatafile] Downloading", geofabrikBase + suffix,
                   "for task", this.task.id);
-    this.wgetInitialFile = execFile('wget', ['-O', this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 500},
+    this.wgetInitialFile = execFile('wget', ['-O', this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
         function (error, stdout, stderr) {
             if (error) {
-                logToConsole(`exec error: ${error}`);
+                logToConsole(`Wget error: ${error}`);
                 return;
             }
             if (stderr.match("saved")) {
