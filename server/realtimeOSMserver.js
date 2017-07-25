@@ -55,7 +55,7 @@ Controller.prototype.updateGeoFabrikMetadata = function() {
     }
 
     const wget = spawnSync('wget', ['-N', 'http://download.geofabrik.de/allkmlfiles.tgz'],
-                            {cwd: `./${this.geofabrikMetadir}/`});
+                            {cwd: `./${this.geofabrikMetadir}/`, maxBuffer: 1024 * 500});
     var notModified = wget.stderr.toString().match("304 Not Modified");
     if(notModified) {
         logToConsole("[updateGeoFabrikMetadata] Metadata not modified.");
@@ -187,7 +187,8 @@ Worker.prototype.clipExtract = function(task) {
     // https://wiki.openstreetmap.org/wiki/Osmosis/Polygon_Filter_File_Format
     
     logToConsole("[clipExtract] Clipping data to coverage for task", this.task.id);
-    var header = this.task.coverage.properties.name || "undefined";
+    // check if task.coverage.properties exists 
+    var header = this.task.coverage.properties !== null ? this.task.coverage.properties.name || "undefined" : "undefined";
     var polygons = [];
     for(let i = 0; i < this.task.coverage.geometry.coordinates.length; i++) {
         var idx = i+1;
@@ -207,7 +208,7 @@ Worker.prototype.clipExtract = function(task) {
     const clippedpath = path.join(path.dirname(this.task.URL), 
                           "clipped_" + path.basename(this.task.URL));
     this.clipProcess = execFile('osmconvert', [this.task.URL, "-B="+polypath, 
-        "-o="+clippedpath], function (error, stdout, stderr) {
+        "-o="+clippedpath], {maxBuffer: 1024 * 500}, function (error, stdout, stderr) {
         if (error) {
             logToConsole("[clipExtract] Error clipping data to coverage for task", 
                 this.task.id, "error:", error);
@@ -261,7 +262,7 @@ Worker.prototype.createInitialDatafile = function() {
                                       geofabrikName.length) + "-latest.osm.pbf";
     logToConsole("[createInitialDatafile] Downloading", geofabrikBase + suffix,
                   "for task", this.task.id);
-    this.wgetInitialFile = execFile('wget', ['-O', this.task.URL, geofabrikBase + suffix],
+    this.wgetInitialFile = execFile('wget', ['-O', this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 500},
         function (error, stdout, stderr) {
             if (error) {
                 logToConsole(`exec error: ${error}`);
@@ -316,7 +317,7 @@ Worker.prototype.updateTask = function() {
                   "new_" + path.basename(this.task.URL));
     this.updateProcess = execFile('osmupdate', 
          ["-v", "--max-merge=2", `-t=osmupdate_temp/Task${this.task.id}`, 
-             this.task.URL, newfile],
+             this.task.URL, newfile], {maxBuffer: 1024 * 500},
         function (error, stdout, stderr) {
             if (error) {
                 if(error.toString().match("Your OSM file is already up-to-date.")) {
