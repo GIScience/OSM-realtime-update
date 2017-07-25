@@ -61,6 +61,7 @@ api.db.run("CREATE TABLE if not exists taskstats (timestamp TEXT PRIMARY KEY, " 
 //
 api.use(express.static('../web/'));
 api.use('/data', serveIndex('./data/', {icons: true, view: "details"}));
+api.use('/data', express.static('./data/'));
 
 
 //

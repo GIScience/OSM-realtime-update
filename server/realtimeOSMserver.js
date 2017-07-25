@@ -54,7 +54,7 @@ Controller.prototype.updateGeoFabrikMetadata = function() {
         logToConsole(`[updateGeoFabrikMetadata] mkdir stderr:\n ${mkdir.stderr}`);
     }
 
-    const wget = spawnSync('wget', ['-N', 'http://download.geofabrik.de/allkmlfiles.tgz'],
+    const wget = spawnSync('wget', ['--progress=dot:giga', '-N', 'http://download.geofabrik.de/allkmlfiles.tgz'],
                             {cwd: `./${this.geofabrikMetadir}/`, maxBuffer: 1024 * 500});
     var notModified = wget.stderr.toString().match("304 Not Modified");
     if(notModified) {
@@ -262,7 +262,7 @@ Worker.prototype.createInitialDatafile = function() {
                                       geofabrikName.length) + "-latest.osm.pbf";
     logToConsole("[createInitialDatafile] Downloading", geofabrikBase + suffix,
                   "for task", this.task.id);
-    this.wgetInitialFile = execFile('wget', ['-O', this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
+    this.wgetInitialFile = execFile('wget', ['--progress=dot:giga', '-O', this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
         function (error, stdout, stderr) {
             if (error) {
                 logToConsole(`Wget error: ${error}. Stdout: ${stdout}. Stderr: ${stderr}`);
