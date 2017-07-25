@@ -3,7 +3,7 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
-const app = express();
+const api = express();
 const morgan = require('morgan');   // library for logging
 const fs = require("fs");           // file system access for logging
 const sqlite3 = require('sqlite3').verbose(); // database access
@@ -16,27 +16,26 @@ function logToConsole() {
     if(log) console.log(new Date().toISOString() + " [API]:", ...arguments);
 }
 
-var api = {};
 api.dataDirectory = "./data/";
 module.exports = api;
 
 // enable body parsing
 // parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: false }));
+api.use(bodyParser.urlencoded({ extended: false }));
 // parse application/json
-app.use(bodyParser.json());
+api.use(bodyParser.json());
 
 // Configure logging
 var accessLogStream = fs.createWriteStream('access.log', {flags: 'a'});
 
 // new token to log POST body
 morgan.token('body', function (req) {return "body: " + JSON.stringify(req.body);});
-app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method ' +
+api.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method ' +
     ':url :body HTTP/:http-version" :status :res[content-length] :response-time ms ' +
     '":referrer" ":user-agent" ', {stream: accessLogStream}));
 
 // configure listening port
-app.listen(1234, function () {
+api.listen(1234, function () {
     logToConsole('Real-time OSM API server running.');
 });
 
@@ -56,10 +55,16 @@ api.db.run("CREATE TABLE if not exists tasks (id INTEGER PRIMARY KEY AUTOINCREME
 api.db.run("CREATE TABLE if not exists taskstats (timestamp TEXT PRIMARY KEY, " +
                                              "taskID INTEGER, timing INTEGER);");
 
-//// API Implementation
 //
+/// serve website
 //
-app.use(function(req, res, next) {
+api.use(express.static('../web/'));
+
+
+//
+/// API Implementation
+//
+api.use(function(req, res, next) {
     // enable CORS
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", 
@@ -67,7 +72,7 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.get('/api/tasks', function (req, res) {
+api.get('/api/tasks', function (req, res) {
     // responds with an array of all tasks
     if(req.query.name) {
         res.redirect('/tasks/name='+req.query.name);
@@ -86,7 +91,7 @@ app.get('/api/tasks', function (req, res) {
     });
 });
 
-app.get(['/api/tasks/name=:name'], function (req, res) {
+api.get(['/api/tasks/name=:name'], function (req, res) {
     // responds with the task whose name matches the one given
     logToConsole("/tasks/name=:name, params:", req.params);
     var SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ?", req.params.name);
@@ -101,7 +106,7 @@ app.get(['/api/tasks/name=:name'], function (req, res) {
     });
 });
 
-app.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
+api.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
     // responds with the task whose id matches the one given
     logToConsole("/tasks/id=:id, params:", req.params);
     var SQLselect = api.db.prepare("SELECT * FROM tasks WHERE id == ?", req.params.id);
@@ -116,7 +121,7 @@ app.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
     });
 });
 
-app.delete('/api/tasks', function (req, res) {
+api.delete('/api/tasks', function (req, res) {
     var SQLdelete = api.db.prepare("DELETE FROM tasks WHERE id == ?", req.body.id);
     logToConsole("DELETE tasks; SQL statement to be run:", SQLdelete, 
         "\nParameter:", req.body.id);
@@ -129,7 +134,7 @@ app.delete('/api/tasks', function (req, res) {
     });
 });
 
-app.post('/api/tasks', function (req, res) {
+api.post('/api/tasks', function (req, res) {
     // tries to add a task to the database, validates input
     
     // validation
@@ -154,17 +159,24 @@ app.post('/api/tasks', function (req, res) {
             errorlist.push("coverage [WKT string / GeoJSON]");
         }
     }
-
     var hint = geojsonhint.hint(coverage);
+    if(hint.some(element => element.message.match("right-hand rule"))) {
+        coverage = geojsonrewind(coverage);
+        hint = geojsonhint.hint(coverage);
+    }
+    hint = hint.filter(element => {
+        if(element.message.match('old-style crs member')) {
+            return false;
+        }
+        return true;
+    });
     if (hint.length > 0) {
-        if(hint[0].message.match("right-hand rule")) {
-            coverage = geojsonrewind(coverage);
-            hint = geojsonhint.hint(coverage);
-        }
-        if (hint.length > 0) {
-            errorlist.push("coverage: invalid polygon", 
-                           JSON.stringify(geojsonhint.hint(coverage)));
-        }
+        errorlist.push("coverage: invalid polygon", 
+                       JSON.stringify(hint));
+    }
+    // TODO check whether coverage is geometry or feature, only allow feature!
+    if(!coverage.hasOwnProperty("geometry")) {
+        errorlist.push("coverage: submitted feature does not have geometry property");
     }
 
     if (expirationDate && isNaN(Date.parse(expirationDate)))
@@ -219,7 +231,7 @@ app.post('/api/tasks', function (req, res) {
                 var SQLupdate = api.db.prepare("UPDATE tasks SET URL = ? WHERE id = ?", 
                     url, id);
                 logToConsole("POST task; SQL for updating URL:", SQLupdate,
-                    "\nParameters:", url);
+                    "\nParameters:", url, id);
                 SQLupdate.run(function(err) {
                     if(err) {
                         logToConsole("SQL error:", err);
@@ -235,7 +247,7 @@ app.post('/api/tasks', function (req, res) {
     }
 });
 
-app.get('/api/taskstats', function (req, res) {
+api.get('/api/taskstats', function (req, res) {
     // responds with an array of all task statistics
     logToConsole("GET /taskstats");
     var SQLselect = api.db.prepare("SELECT * FROM taskstats;");

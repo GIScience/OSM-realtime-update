@@ -29,6 +29,7 @@ function logToConsole() {
 function Controller() {
     this.api = api;
     this.workers = [];
+    this.maxParallelUpdates = 3;
     this.geofabrikMetadir = "geofabrikbounds";
     this.geofabrikMetadata = undefined;
     // update geofabrik metadata and update daily
@@ -106,19 +107,36 @@ Controller.prototype.updateWorkers = function() {
     SQLselect.all(function (err, tasks) {
         if(err) logToConsole("Can't get list of tasks from database", err);
         // list of task ids handled by workers
-        var taskIDsHandled = this.workers.map(worker => worker.task.id);
         var taskIDs = tasks.map(task => task.id);
         // delete workers that work on tasks no longer in database
-        for(let i in taskIDsHandled) {
-            if(taskIDs.indexOf(taskIDsHandled[i]) == -1) {
-                logToConsole("Deleting worker for task", taskIDsHandled[i]);
-                this.workers[i].terminate();
-                this.workers.splice(i, 1);
+        this.workers.forEach(function(worker, idx, array) {
+            if(worker.task.expirationDate) {
+                var expires = new Date(worker.task.expirationDate);
+                if(expires < Date.now()) {
+                    logToConsole(`Task ${worker.task.id} expired. Deleting task and worker.`);
+                    // delete from database
+                    var SQLdelete = this.api.db.prepare("DELETE FROM tasks WHERE id = ?;",
+                        worker.task.id);
+                    SQLdelete.all(function (err, result) {
+                        if(err) logToConsole("Error deleting task", worker.task.id,
+                            "from database", err);
+                    });
+                    // remove task from taskIDs in order to trigger worker removal
+                    var taskIdx = taskIDs.indexOf(worker.task.id);
+                    taskIDs.splice(taskIdx, 1);
+                    tasks.splice(taskIdx, 1);
+                }
             }
-        }
+            if(taskIDs.indexOf(worker.task.id) == -1) {
+                logToConsole("Deleting worker for task", worker.task.id);
+                this.workers[idx].terminate();
+                this.workers.splice(idx, 1);
+            }
+        }.bind(this));
         // add new workers for unhandled tasks
+        var workerTaskIDs = this.workers.map(worker => worker.task.id);
         for(let i in tasks) {
-            if(taskIDsHandled.indexOf(tasks[i].id) == -1) {
+            if(workerTaskIDs.indexOf(tasks[i].id) == -1) {
                 logToConsole("Adding worker for task", tasks[i].id);
                 this.workers.push(new Worker(this, tasks[i]));
             }
@@ -136,8 +154,7 @@ function Worker(controller, task) {
     this.task = task;
     this.task.coverage = JSON.parse(this.task.coverage);
 
-    // ToDo Check age of data file, recreate initial file if older than threshold
-    if(!fs.existsSync(this.task.URL)) this.createInitialDatafile();
+    this.updateTask();
     this.updateIntervalID = setInterval(this.updateTask.bind(this), 
                                         this.task.updateInterval*1000);
 }
@@ -170,7 +187,7 @@ Worker.prototype.clipExtract = function(task) {
     // https://wiki.openstreetmap.org/wiki/Osmosis/Polygon_Filter_File_Format
     
     logToConsole("[clipExtract] Clipping data to coverage for task", this.task.id);
-    var header = this.task.coverage.properties.name;
+    var header = this.task.coverage.properties.name || "undefined";
     var polygons = [];
     for(let i = 0; i < this.task.coverage.geometry.coordinates.length; i++) {
         var idx = i+1;
@@ -221,14 +238,17 @@ Worker.prototype.clipExtract = function(task) {
 Worker.prototype.createInitialDatafile = function() {
     /* downloads initial data file in .pbf-format */
     if(!this.controller.geofabrikMetadata) {
-        logToConsole("Can't create initial data file for task", this.task.id);
+        logToConsole("Can't create initial data file for task", this.task.id, 
+            "- no Geofabrik metadata.");
         return;
     }
     var geofabrikName = this.findExtract(this.task.coverage, 
                                          this.controller.geofabrikMetadata);
     if(geofabrikName === undefined) {
-        logToConsole("Unable to update task", this.task.id, 
+        logToConsole("Can't create initial data file for task", this.task.id, 
                      "- no Geofabrik extract found.");
+        // ToDo Abort worker
+        this.terminate();
         return;
     }
     const mkdir = spawnSync('mkdir', ['-p', path.dirname(this.task.URL)]);
@@ -261,6 +281,11 @@ Worker.prototype.updateTask = function() {
     var timing = Date.now();
 
     logToConsole("[updateTask] Starting update for task", this.task.id);
+    if(this.controller.workers.filter(worker => 
+        worker.updateProcess !== undefined).length >= this.controller.maxParallelUpdates){
+        logToConsole(`[updateTask ${this.task.id}] Too many parallel updates, aborting.`);
+        return;
+    }
     if(this.updateProcess !== undefined) {
         logToConsole(`[updateTask] Update for task ${this.task.id} already running.`);
         return;
@@ -278,10 +303,19 @@ Worker.prototype.updateTask = function() {
         logToConsole(`[updateTask] Can't update task ${this.task.id}.` + 
                       this.task.URL + " not found. Trying to initialize data file.");
         this.createInitialDatafile();
+        return;
+    }
+    var dateThreshold = 1;
+    if((Date.now() - fs.statSync(this.task.URL).mtime)/1000/60/60/24 > dateThreshold) {
+        logToConsole(`${this.task.URL} older than ${dateThreshold} days, recreating.`);
+        this.createInitialDatafile();
+        return;
     }
     var newfile = path.join(path.dirname(this.task.URL), 
                   "new_" + path.basename(this.task.URL));
-    this.updateProcess = execFile('osmupdate', ["-v", this.task.URL, newfile],
+    this.updateProcess = execFile('osmupdate', 
+         ["-v", "--max-merge=2", `-t=osmupdate_temp/Task${this.task.id}`, 
+             this.task.URL, newfile],
         function (error, stdout, stderr) {
             if (error) {
                 if(error.toString().match("Your OSM file is already up-to-date.")) {

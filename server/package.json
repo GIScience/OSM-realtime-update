@@ -4,8 +4,8 @@
   "description": "server that manages and runs tasks to provide realtime osm data",
   "main": "realtimeOSM.js",
   "scripts": {
-    "test": "nodemon --inspect realtimeOSM.js",
-    "start": "nodemon realtimeOSM.js"
+    "test": "node inspect realtimeOSM.js",
+    "start": "node realtimeOSM.js"
   },
   "repository": {
     "type": "git",
