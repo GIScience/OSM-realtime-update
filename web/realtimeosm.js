@@ -13,7 +13,7 @@ function init() {
 			new ol.layer.Tile({
                 source : new ol.source.Stamen({layer: "terrain"}),
 			}),
-			new ol.layer.Vector({
+            new ol.layer.Vector({
                 title: 'tasks',
                 source : new ol.source.Vector({
                     format: new ol.format.GeoJSON(),
@@ -41,6 +41,16 @@ function init() {
                         xhr.send();
                     }
                 }),
+                // improve polygon visibility
+                style: new ol.style.Style({
+                    stroke: new ol.style.Stroke({
+                        color: 'rebeccapurple',
+                        width: 1.5
+                    }),
+                    fill: new ol.style.Fill({
+                        color: 'rgba(200,200,200, 0.8)'
+                    })
+                })
 			}),
 			new ol.layer.Vector({
                 title: 'tasks_tmp',
