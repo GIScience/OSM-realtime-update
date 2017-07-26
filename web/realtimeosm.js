@@ -91,30 +91,33 @@ function init() {
     // handle delete button 
     deleteBtn.addEventListener('click', handleDeleteButtonClick);
 
-    // populate table
+    // create table
     var tasks = tasksLayer.getSource().getFeatures();
     var table = $('#table').DataTable( {
         data: tasks,
         rowId: "getId()",
         select: {style: 'single', info: false},
-        lengthChange:false,
-        scrollX: false,
+        scrollX: true,
         scrollY: false,
-        scrollCollapse: true,
         // custom column definitions
         columns: [{ data: "getId()", title: "ID"},
-                  { data: "getProperties().name", title: "Name", className: "dt-left"},
-                  { data: "getProperties().URL", title: "URL", className: "dt-left"},
-              { data: "getProperties().expirationDate", title: "expires", className: "dt-left"},
-              { data: "getProperties().addedDate", title: "added", className: "dt-left"},
-              { data: "getProperties().updateInterval", title: "updateInterval", className: "dt-left"},
-              { data: "getProperties().lastUpdated", title: "updated", className: "dt-left"},
-              { data: "getProperties().averageRuntime", title: "averageRuntime", className: "dt-left"},
+          { data: "getProperties().name", title: "Name", className: "dt-left"},
+          { data: "getProperties().URL", title: "URL", className: "dt-left"},
+          { data: "getProperties().expirationDate", title: "expires", className: "dt-left",
+              render: data => {return data !== null ? data.substring(0, 19) : '';}},
+          { data: "getProperties().addedDate", title: "added", className: "dt-left",
+              render: data => {return data !== null ? data.substring(0, 16) : '';}},
+          { data: "getProperties().updateInterval", title: "update interval [s]", 
+              className: "dt-left"},
+          { data: "getProperties().lastUpdated", title: "updated", className: "dt-left",
+              render: data => {return data !== null ? data.substring(0, 19) : '';}},
+          { data: "getProperties().averageRuntime", title: "mean runtime [s]", 
+              className: "dt-left", render: data => Math.trunc((data/100))/10},
         ]
     } );
 
     // keep table updated
-    tasksLayer.getSource().on('change', updateReportTable);
+    tasksLayer.getSource().on('change', updateTable);
     // keep map size updated with context
     window.onresize = setTimeout(map.updateSize.bind(map), 200);
 
@@ -330,7 +333,7 @@ function createPopup(coordinates, content) {
     map.render();
 }
 
-function updateReportTable() {
+function updateTable() {
     // update table with tasks
     var tasks = tasksLayer.getSource().getFeatures();
     var table = $('table').DataTable();

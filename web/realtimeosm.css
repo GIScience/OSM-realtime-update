@@ -14,7 +14,7 @@ a, a:active {
     border-bottom: 1px gray dotted;
 }
 #container{ 
-    max-width: 95%;
+    max-width: 98%;
     margin: 0 auto; /* Zentriert Inhalt */
 }
 #flexrow{
@@ -27,7 +27,7 @@ a, a:active {
     overflow: auto;
 }
 #map{
-    flex: 2 0 280px;
+    flex: 1 0 280px;
     height: 75vh;
     margin: .5em;
 }
