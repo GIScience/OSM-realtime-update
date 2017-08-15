@@ -1,6 +1,10 @@
 # TODO
 
 - Swaggerhub Dokumentation erstellen
+- parameterize important settings (-> config file?)
+- allow parameter for verbosity, only log errors?
+- allow adding tasks by uploading geojson
+
 
 # Real-time OSM [DRAFT]
 
