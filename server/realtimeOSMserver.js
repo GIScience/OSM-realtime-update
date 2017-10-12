@@ -179,7 +179,7 @@ Worker.prototype.findExtract = function(given, extractsGeoJSON) {
     return result.properties.geofabrikName;
 };
 
-Worker.prototype.clipExtract = function(task) {
+Worker.prototype.clipExtract = function(task, callback) {
     /* clips task data file at task.URL to task.coverage 
      * using osmconvert */
 
@@ -187,6 +187,7 @@ Worker.prototype.clipExtract = function(task) {
     // https://wiki.openstreetmap.org/wiki/Osmosis/Polygon_Filter_File_Format
     
     logToConsole("[clipExtract] Clipping data to coverage for task", this.task.id);
+    // Generate poly string
     // check if task.coverage.properties exists 
     var header = this.task.coverage.properties !== null ? this.task.coverage.properties.name || "undefined" : "undefined";
     var polygons = [];
@@ -212,7 +213,7 @@ Worker.prototype.clipExtract = function(task) {
         if (error) {
             logToConsole("[clipExtract] Error clipping data to coverage for task", 
                 this.task.id, "error:", error);
-            return;
+            throw "Error clipping file.";
         }
 
         // replace original file with clipped file
@@ -220,7 +221,7 @@ Worker.prototype.clipExtract = function(task) {
         if(mv.stderr.toString() !== '') {
             logToConsole(`[clipExtract] Error moving clipped file to original file.`,
                          `mv stderr:\n ${mv.stderr}`);
-            return;
+            throw "Error moving clipped file.";
         } 
 
         // remove poly-file
@@ -228,10 +229,11 @@ Worker.prototype.clipExtract = function(task) {
         if(rm.stderr.toString() !== '') {
             logToConsole(`[clipExtract] Error removing poly-file for task ${this.task.id}`,
                          `rm stderr:\n ${rm.stderr}`);
-            return;
+            throw "Error removing poly-file for task.";
         } 
         logToConsole("[clipExtract] Successfully clipped extract for task", this.task.id);
         delete this.clipProcess;
+        if(callback) callback();
         }.bind(this)
     );
 };
@@ -307,6 +309,7 @@ Worker.prototype.updateTask = function() {
         this.createInitialDatafile();
         return;
     }
+    // check if file is older than threshold -> redownload
     var dateThreshold = 1;
     if((Date.now() - fs.statSync(this.task.URL).mtime)/1000/60/60/24 > dateThreshold) {
         logToConsole(`${this.task.URL} older than ${dateThreshold} days, recreating.`);
@@ -315,9 +318,41 @@ Worker.prototype.updateTask = function() {
     }
     var newfile = path.join(path.dirname(this.task.URL), 
                   "new_" + path.basename(this.task.URL));
+    
+    // helper function that finishes update by inserting timings
+    let finishTaskUpdate = function() {
+        // insert timing into database
+        var insertTimingSQL = this.controller.api.db.prepare(
+            `INSERT INTO taskstats (timestamp, taskID, timing) 
+                VALUES (?, ?, ?);`, 
+                new Date().toISOString(), this.task.id, Date.now()-timing);
+        insertTimingSQL.run(function (err) {
+            if(err) logToConsole("[updateTask] SQL error:", err);
+        });
+        // update timing statistics
+        var updateTimingStatsSQL = this.controller.api.db.prepare(
+            `UPDATE tasks 
+             SET averageRuntime = (SELECT avg(timing) FROM taskstats
+                                   WHERE taskID = ?)
+             WHERE id = ?`, this.task.id, this.task.id);
+        updateTimingStatsSQL.run(function (err) {
+            if(err) logToConsole("[updateTask] SQL error:", err);
+        });
+        // update lastUpdated
+        var updateLastUpdatedSQL = this.controller.api.db.prepare(
+            `UPDATE tasks 
+             SET lastUpdated = ?
+             WHERE id = ?`, 
+             new Date().toISOString(), this.task.id);
+        updateLastUpdatedSQL.run(function (err) {
+            if(err) logToConsole("[updateTask] SQL error:", err);
+        });
+        logToConsole("[updateTask] Successfully updated task", this.task.id);
+    };
+    // start update
     this.updateProcess = execFile('osmupdate', 
-         ["-v", "--max-merge=2", `-t=osmupdate_temp/Task${this.task.id}`, 
-             this.task.URL, newfile], {maxBuffer: 1024 * 500},
+        ["-v", "--max-merge=2", `-t=osmupdate_temp/Task${this.task.id}`, 
+        this.task.URL, newfile], {maxBuffer: 1024 * 500},
         function (error, stdout, stderr) {
             if (error) {
                 if(error.toString().match("Your OSM file is already up-to-date.")) {
@@ -325,38 +360,20 @@ Worker.prototype.updateTask = function() {
                 } else logToConsole(`[updateTask] Error updating task. error: ${error}`);
             } else {
                 if (stderr.match("Completed successfully")) {
+                    // replace old file with updated version
                     const mv = spawnSync('mv', [newfile, this.task.URL]);
                     if(mv.stderr.toString() !== '') {
                         logToConsole(`[updateTask] Error moving new file to old file.`,
                                      `mv stderr:\n ${mv.stderr}`);
                     } else {
-                        logToConsole("[updateTask] Successfully updated task", this.task.id);
-                        // insert timing into database
-                        var insertTimingSQL = this.controller.api.db.prepare(
-                            `INSERT INTO taskstats (timestamp, taskID, timing) 
-                                VALUES (?, ?, ?);`, 
-                                new Date().toISOString(), this.task.id, Date.now()-timing);
-                        insertTimingSQL.run(function (err) {
-                            if(err) logToConsole("[updateTask] SQL error:", err);
-                        });
-                        // update timing statistics
-                        var updateTimingStatsSQL = this.controller.api.db.prepare(
-                            `UPDATE tasks 
-                             SET averageRuntime = (SELECT avg(timing) FROM taskstats
-                                                   WHERE taskID = ?)
-                             WHERE id = ?`, this.task.id, this.task.id);
-                        updateTimingStatsSQL.run(function (err) {
-                            if(err) logToConsole("[updateTask] SQL error:", err);
-                        });
-                        // update lastUpdated
-                        var updateLastUpdatedSQL = this.controller.api.db.prepare(
-                            `UPDATE tasks 
-                             SET lastUpdated = ?
-                             WHERE id = ?`, 
-                             new Date().toISOString(), this.task.id);
-                        updateLastUpdatedSQL.run(function (err) {
-                            if(err) logToConsole("[updateTask] SQL error:", err);
-                        });
+                        // clip new file and finish task update (insert timings)
+                        try{
+                            this.clipExtract(this.task, finishTaskUpdate.bind(this));
+                        }
+                        catch(err) {
+                            logToConsole(`[updateTask] Error clipping updated file for task ${this.task.id}`);
+                            return;
+                        }
                     }
                 }
             }

@@ -1,23 +1,37 @@
-# TODO
-
-- Swaggerhub Dokumentation erstellen
-- parameterize important settings (-> config file?)
-- allow parameter for verbosity, only log errors?
-- allow adding tasks by uploading geojson
-
-
-# Real-time OSM [DRAFT]
+# Real-time OSM
 
 A service providing real-time OSM data.
 
 Three components:
 
-1. The API adds, deletes and requests information about tasks that provide region-bound real-time
-   OSM data in PBF file format via a permanent URL
+1. The API adds, deletes and requests information about tasks that provide
+   region-bound real-time OSM data in PBF file format via a permanent URL
 
 2. The backend runs, manages and gathers statistics for tasks
 
-3. The web application serves the OSM data produced by the tasks
+3. The frontend allows manipulating tasks and serves the OSM data produced by
+   the tasks.
+
+
+## Installation
+
+### Docker
+
+Use the Dockerfile provided.
+
+### Manual
+
+`git clone https://gitlab.gistools.geog.uni-heidelberg.de/giscience/realtime_osm/realtime_osm`
+`cd realtime_osm/server`
+`npm install`
+`npm start`
+
+
+## Usage
+
+Real-time OSM provides a web-frontend, that is accessible via port 1234.
+Point your browser to `http://127.0.0.1:1234/`.
+
 
 
 ## API Specification
@@ -124,7 +138,7 @@ Individual resource: `/tasks/:id`
 
 #### Authentication
 
-Optional
+To be implemented
 
 
 
@@ -132,17 +146,15 @@ Optional
 
 
 
-
 ## Backend Specification
 
 #### Data storage 
 
-sqlite3-based. 
 
 The OSM data files are stored in a subfolder that is served by
 the web app. File names are generated using name and id.
 
-A main database keeps track of the application state, it 
+A main sqlite3 database keeps track of the application state, it 
 contains two tables:
 
 1. tasks
@@ -163,8 +175,8 @@ Format:
 
 #### Update strategy
 
-For each task, initialise by downloading a suitable .pbf from Geofabrik and
-update it using osmupdate.
+For each task, initialise data by downloading a suitable .pbf from Geofabrik,
+clip it to the task's boundary and update it using osmupdate.
 
 Algorithm:
 
