@@ -149,7 +149,7 @@ api.post('/api/tasks', function (req, res) {
     logToConsole("req.body", req.body);
     if (!name || name.match(/^[a-zA-Z0-9]+$/) === null) 
         errorlist.push("name [a-zA-Z]");
-    if (typeof(req.body.coverage) != "object") {
+    if (typeof(coverage) != "object") {
         try {
             coverage = WKT.parse(coverage);
             if(coverage.coordinates.reduce((result, subpoly) => 
@@ -159,7 +159,7 @@ api.post('/api/tasks', function (req, res) {
         } catch (e) {
             logToConsole("Error parsing WKT coverage while adding task. Coverage:\n", 
                 coverage, "\n", e);
-            errorlist.push("coverage [WKT string / GeoJSON]");
+            errorlist.push("coverage [WKT string]");
         }
     }
     var hint = geojsonhint.hint(coverage);
@@ -177,7 +177,11 @@ api.post('/api/tasks', function (req, res) {
         errorlist.push("coverage: invalid polygon", 
                        JSON.stringify(hint));
     }
-    // TODO check whether coverage is geometry or feature, only allow feature!
+    // check whether coverage is geometry
+    if(coverage.type == 'Polygon') {
+        // generate feature
+        coverage = {type: "Feature", geometry: coverage, properties: null};
+    }
     if(!coverage.hasOwnProperty("geometry")) {
         errorlist.push("coverage: submitted feature does not have geometry property");
     }
