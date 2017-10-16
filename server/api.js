@@ -152,44 +152,47 @@ api.post('/api/tasks', function (req, res) {
     if (typeof(coverage) != "object") {
         try {
             coverage = WKT.parse(coverage);
+            if(coverage === null) {
+                throw new Error("WKT string could not be parsed.");
+            }
             if(coverage.coordinates.reduce((result, subpoly) => 
                                             subpoly.length + result, 0) > 10000) {
                 throw new Error("Polygon has more that 10000 nodes.");
             }
         } catch (e) {
-            logToConsole("Error parsing WKT coverage while adding task. Coverage:\n", 
-                coverage, "\n", e);
+            logToConsole("Error parsing WKT string while adding task. Coverage:\n", 
+                req.body.coverage, "\n", e);
             errorlist.push("coverage [WKT string]");
         }
     }
-    var hint = geojsonhint.hint(coverage);
-    if(hint.some(element => element.message.match("right-hand rule"))) {
-        coverage = geojsonrewind(coverage);
-        hint = geojsonhint.hint(coverage);
-    }
-    hint = hint.filter(element => {
-        if(element.message.match('old-style crs member')) {
-            return false;
+    if(errorlist.length === 0) {
+        var hint = geojsonhint.hint(coverage);
+        if(hint.some(element => element.message.match("right-hand rule"))) {
+            coverage = geojsonrewind(coverage);
+            hint = geojsonhint.hint(coverage);
         }
-        return true;
-    });
-    if (hint.length > 0) {
-        errorlist.push("coverage: invalid polygon", 
-                       JSON.stringify(hint));
+        hint = hint.filter(element => {
+            if(element.message.match('old-style crs member')) {
+                return false;
+            }
+            return true;
+        });
+        if (hint.length > 0) {
+            errorlist.push("coverage: invalid polygon", 
+                           JSON.stringify(hint));
+        }
+        // check whether coverage is geometry
+        if(coverage.type == 'Polygon') {
+            // generate feature
+            coverage = {type: "Feature", geometry: coverage, properties: null};
+        }
+        if(!coverage.hasOwnProperty("geometry")) {
+            errorlist.push("coverage: submitted feature does not have geometry property");
+        }
+        if (expirationDate && isNaN(Date.parse(expirationDate)))
+            errorlist.push("expirationDate in ISO 8601, hours optional" +
+                            "[YYYY-MM-DD(THH:MM:SS+HH:MM)]");
     }
-    // check whether coverage is geometry
-    if(coverage.type == 'Polygon') {
-        // generate feature
-        coverage = {type: "Feature", geometry: coverage, properties: null};
-    }
-    if(!coverage.hasOwnProperty("geometry")) {
-        errorlist.push("coverage: submitted feature does not have geometry property");
-    }
-
-    if (expirationDate && isNaN(Date.parse(expirationDate)))
-        errorlist.push("expirationDate in ISO 8601, hours optional" +
-                        "[YYYY-MM-DD(THH:MM:SS+HH:MM)]");
-
     if(errorlist.length > 0) {
         res.status(400).send("Error adding task. Invalid parameters: " + 
             errorlist.join(", "));
