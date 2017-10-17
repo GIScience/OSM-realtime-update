@@ -22,19 +22,23 @@ Use the Dockerfile provided.
 ### Manual
 
 `git clone https://gitlab.gistools.geog.uni-heidelberg.de/giscience/realtime_osm/realtime_osm`
+
 `cd realtime_osm/server`
+
 `npm install`
+
 `npm start`
 
 
 ## Usage
 
 Real-time OSM provides a web-frontend, that is accessible via port 1234.
-Point your browser to `http://127.0.0.1:1234/`.
 
-
+Point your browser to `http://localhost:1234/`.
 
 ## API Specification
+
+Base Url: `/api`
 
 Main collection: `/tasks`
 
@@ -71,7 +75,7 @@ Individual resource: `/tasks/:id`
 
 * Example:
 
-	`curl --data "name=test&coverage=POLYGON((10 20), (20 30), (30 30), (10 10))&expirationDate=2020-05-01" http://127.0.0.1:1234/tasks`
+	`curl --data "name=test&coverage=POLYGON((10 20), (20 30), (30 30), (10 10))&expirationDate=2020-05-01" http://localhost:1234/api/tasks`
 
 &nbsp;
 
@@ -93,7 +97,7 @@ Individual resource: `/tasks/:id`
 
 * Example:
 
-	curl --data "id=5" -X DELETE http://127.0.0.1:1234/tasks
+	curl --data "id=5" -X DELETE http://localhost:1234/api/tasks
 
 &nbsp;
 
@@ -127,19 +131,18 @@ Individual resource: `/tasks/:id`
 
 * Example:
 
-	* curl http://127.0.0.1:1234/tasks
+	* curl http://localhost:1234/api/tasks
 
-	* curl http://127.0.0.1:1234/tasks/2
+	* curl http://localhost:1234/api/tasks/2
 
-	* curl http://127.0.0.1:1234/tasks/id=2
+	* curl http://localhost:1234/api/tasks/id=2
 
-	* curl http://127.0.0.1:1234/tasks/name=test1
+	* curl http://localhost:1234/api/tasks/name=test1
 
 
 #### Authentication
 
 To be implemented
-
 
 
 &nbsp;
