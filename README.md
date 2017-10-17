@@ -19,15 +19,19 @@ Three components:
 
 Use the Dockerfile provided.
 
+1. `docker build -t realtimeosm .`
+
+2. `docker run -p 1234:1234 -d realtimeosm`
+
 ### Manual
 
-`git clone https://gitlab.gistools.geog.uni-heidelberg.de/giscience/realtime_osm/realtime_osm`
+1. `git clone https://gitlab.gistools.geog.uni-heidelberg.de/giscience/realtime_osm/realtime_osm`
 
-`cd realtime_osm/server`
+2. `cd realtime_osm/server`
 
-`npm install`
+3. `npm install`
 
-`npm start`
+4. `npm start`
 
 
 ## Usage
