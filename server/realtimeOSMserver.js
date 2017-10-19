@@ -22,7 +22,7 @@ const turfPoint = require('turf-point');
 const api = require('./api.js');
 const log = true;
 
-function logToConsole() {
+function logToConsole(...args) {
     if(log) console.log(new Date().toISOString() + " [Controller]:", ...arguments);
 }
 
@@ -62,7 +62,8 @@ Controller.prototype.updateGeoFabrikMetadata = function() {
         if(this.geofabrikMetadata) return;
     } else if(wget.stderr.toString().match("saved") === null && 
               notModified === null) {
-        logToConsole("[updateGeoFabrikMetadata] Error downloading metadata.");
+        logToConsole("[updateGeoFabrikMetadata] Error downloading metadata. wget output:", 
+            wget.stderr.toString());
         return;
     }
 
@@ -95,6 +96,7 @@ Controller.prototype.updateGeoFabrikMetadata = function() {
     }
 
     this.geofabrikMetadata = geojsonMerge(geojsonBoundaries);
+    logToConsole('[updateGeoFabrikMetadata] Successfully updated metadata.');
 };
 
 Controller.prototype.updateWorkers = function() {
