@@ -58,7 +58,7 @@ Controller.prototype.updateGeoFabrikMetadata = function() {
 
     const wget = spawnSync('wget', ['--progress=dot:giga', '-N', 'http://download.geofabrik.de/allkmlfiles.tgz'],
                             {cwd: `./${this.geofabrikMetadir}/`, maxBuffer: 1024 * 500});
-    var notModified = wget.stderr.toString().match("304 Not Modified");
+    let notModified = wget.stderr.toString().match("304 Not Modified");
     if(notModified) {
         logToConsole("[updateGeoFabrikMetadata] Metadata not modified.");
         if(this.geofabrikMetadata) return;
@@ -83,13 +83,13 @@ Controller.prototype.updateGeoFabrikMetadata = function() {
     }
 
     // convert all boundary kml files to geojson
-    var boundaryFileList = walkSync(path.join(__dirname, this.geofabrikMetadir));
+    let boundaryFileList = walkSync(path.join(__dirname, this.geofabrikMetaDir));
     boundaryFileList.splice(boundaryFileList.findIndex(arr => arr.match("allkmlfiles")), 1);
-    var geojsonBoundaries = [];
-    for(var i in boundaryFileList) {
-        var file = boundaryFileList[i];
-        var kml = new DOMParser().parseFromString(fs.readFileSync(file, 'utf8'));
-        var gj = geojsonFlatten(togeojson.kml(kml));
+    let geojsonBoundaries = [];
+    for(let i in boundaryFileList) {
+        let file = boundaryFileList[i];
+        let kml = new DOMParser().parseFromString(fs.readFileSync(file, 'utf8'));
+        let gj = geojsonFlatten(togeojson.kml(kml));
         gj.features.map(feature => {
             feature.properties.geofabrikName = file.substr(0, file.length-4).substr(5);
             feature.properties.area = geojsonArea.geometry(feature.geometry);
@@ -105,28 +105,28 @@ Controller.prototype.updateWorkers = function() {
     /* loops through list of tasks in db and 
      * starts/terminates workers accordingly */
 
-    var oldWorkerIDs = this.workers.map(worker => worker.task.id);
+    let oldWorkerIDs = this.workers.map(worker => worker.task.id);
     // get tasks and sync with worker list
-    var SQLselect = this.api.db.prepare("SELECT * FROM tasks;");
+    let SQLselect = this.api.db.prepare("SELECT * FROM tasks;");
     SQLselect.all(function (err, tasks) {
         if(err) logToConsole("Can't get list of tasks from database", err);
         // list of task ids handled by workers
-        var taskIDs = tasks.map(task => task.id);
+        let taskIDs = tasks.map(task => task.id);
         // delete workers that work on tasks no longer in database
         this.workers.forEach(function(worker, idx, array) {
             if(worker.task.expirationDate) {
-                var expires = new Date(worker.task.expirationDate);
+                let expires = new Date(worker.task.expirationDate);
                 if(expires < Date.now()) {
                     logToConsole(`Task ${worker.task.id} expired. Deleting task and worker.`);
                     // delete from database
-                    var SQLdelete = this.api.db.prepare("DELETE FROM tasks WHERE id = ?;",
+                    let SQLdelete = this.api.db.prepare("DELETE FROM tasks WHERE id = ?;",
                         worker.task.id);
                     SQLdelete.all(function (err, result) {
                         if(err) logToConsole("Error deleting task", worker.task.id,
                             "from database", err);
                     });
                     // remove task from taskIDs in order to trigger worker removal
-                    var taskIdx = taskIDs.indexOf(worker.task.id);
+                    let taskIdx = taskIDs.indexOf(worker.task.id);
                     taskIDs.splice(taskIdx, 1);
                     tasks.splice(taskIdx, 1);
                 }
@@ -138,14 +138,14 @@ Controller.prototype.updateWorkers = function() {
             }
         }.bind(this));
         // add new workers for unhandled tasks
-        var workerTaskIDs = this.workers.map(worker => worker.task.id);
+        let workerTaskIDs = this.workers.map(worker => worker.task.id);
         for(let i in tasks) {
             if(workerTaskIDs.indexOf(tasks[i].id) == -1) {
                 logToConsole("Adding worker for task", tasks[i].id);
                 this.workers.push(new Worker(this, tasks[i]));
             }
         }
-        var newWorkerIDs = this.workers.map(worker => worker.task.id);
+        let newWorkerIDs = this.workers.map(worker => worker.task.id);
         if(oldWorkerIDs.join("") != newWorkerIDs.join("")) {
             logToConsole("Updated worker list. Current tasks handled:", newWorkerIDs);
         }
@@ -165,11 +165,11 @@ function Worker(controller, task) {
 
 Worker.prototype.findExtract = function(given, extractsGeoJSON) {
     /* find smallest area extract that fully includes the given polygon */
-    var matches = extractsGeoJSON.features.filter(function(extract) {
+    let matches = extractsGeoJSON.features.filter(function(extract) {
         if (!turfInside(turfPoint(given.geometry.coordinates[0][0]), extract))
             return false;
         // deep-clone `given` object, see: https://github.com/Turfjs/turf-erase/issues/5
-        var erased = turfErase(JSON.parse(JSON.stringify(given)), extract);
+        let erased = turfErase(JSON.parse(JSON.stringify(given)), extract);
         if (erased === undefined)
             return true;
         return false;
@@ -177,7 +177,7 @@ Worker.prototype.findExtract = function(given, extractsGeoJSON) {
     if (matches.length === 0) {
         return undefined;
     }
-    var result = matches.reduce(function(prev, current) {
+    let result = matches.reduce(function(prev, current) {
         return current.properties.area < prev.properties.area ? current : prev;
     });
     return result.properties.geofabrikName;
@@ -193,17 +193,18 @@ Worker.prototype.clipExtract = function(task, callback) {
     logToConsole("[clipExtract] Clipping data to coverage for task", this.task.id);
     // Generate poly string
     // check if task.coverage.properties exists 
-    var header = this.task.coverage.properties !== null ? this.task.coverage.properties.name || "undefined" : "undefined";
-    var polygons = [];
+    let header = this.task.coverage.properties !== null ? 
+        this.task.coverage.properties.name || "undefined" : "undefined";
+    let polygons = [];
     for(let i = 0; i < this.task.coverage.geometry.coordinates.length; i++) {
-        var idx = i+1;
+        let idx = i+1;
         idx = (idx == 1 ? idx : -idx);
-        var coords = this.task.coverage.geometry.coordinates[i].map(pair => 
+        let coords = this.task.coverage.geometry.coordinates[i].map(pair => 
                                                                     pair.join("\t"));
         coords = coords.join("\n\t");
         polygons[i] = `${idx}\n\t${coords}\nEND`;
     }
-    var poly = [header, polygons.join("\n"), "END"].join("\n");
+    let poly = [header, polygons.join("\n"), "END"].join("\n");
 
     // save poly-string to file
     const polypath = "task"+this.task.id+".poly";
@@ -249,7 +250,7 @@ Worker.prototype.createInitialDatafile = function() {
             "- no Geofabrik metadata.");
         return;
     }
-    var geofabrikName = this.findExtract(this.task.coverage, 
+    let geofabrikName = this.findExtract(this.task.coverage, 
                                          this.controller.geofabrikMetadata);
     if(geofabrikName === undefined) {
         logToConsole("Can't create initial data file for task", this.task.id, 
@@ -262,9 +263,9 @@ Worker.prototype.createInitialDatafile = function() {
     if(mkdir.stderr.toString() !== '') {
         logToConsole(`[createInitialDatafile] mkdir stderr:\n ${mkdir.stderr}`);
     }
-    var geofabrikBase = 'http://download.geofabrik.de/';
-    var suffixIdx = geofabrikName.match(this.controller.geofabrikMetadir).index;
-    var suffix = geofabrikName.substr(suffixIdx + this.controller.geofabrikMetadir.length, 
+    let geofabrikBase = 'http://download.geofabrik.de/';
+    let suffixIdx = geofabrikName.match(this.controller.geofabrikMetaDir).index;
+    let suffix = geofabrikName.substr(suffixIdx + this.controller.geofabrikMetaDir.length, 
                                       geofabrikName.length) + "-latest.osm.pbf";
     logToConsole("[createInitialDatafile] Downloading", geofabrikBase + suffix,
                   "for task", this.task.id);
@@ -285,7 +286,7 @@ Worker.prototype.createInitialDatafile = function() {
 
 Worker.prototype.updateTask = function() {
     /* updates task's OSM data */
-    var timing = Date.now();
+    let timing = Date.now();
 
     logToConsole("[updateTask] Starting update for task", this.task.id);
     if(this.updateProcess !== undefined) {
@@ -314,19 +315,19 @@ Worker.prototype.updateTask = function() {
         return;
     }
     // check if file is older than threshold -> redownload
-    var dateThreshold = 1;
+    let dateThreshold = 1;
     if((Date.now() - fs.statSync(this.task.URL).mtime)/1000/60/60/24 > dateThreshold) {
         logToConsole(`${this.task.URL} older than ${dateThreshold} days, recreating.`);
         this.createInitialDatafile();
         return;
     }
-    var newfile = path.join(path.dirname(this.task.URL), 
+    let newfile = path.join(path.dirname(this.task.URL), 
                   "new_" + path.basename(this.task.URL));
     
     // helper function that finishes update by inserting timings
     let finishTaskUpdate = function() {
         // insert timing into database
-        var insertTimingSQL = this.controller.api.db.prepare(
+        let insertTimingSQL = this.controller.api.db.prepare(
             `INSERT INTO taskstats (timestamp, taskID, timing) 
                 VALUES (?, ?, ?);`, 
                 new Date().toISOString(), this.task.id, Date.now()-timing);
@@ -334,7 +335,7 @@ Worker.prototype.updateTask = function() {
             if(err) logToConsole("[updateTask] SQL error:", err);
         });
         // update timing statistics
-        var updateTimingStatsSQL = this.controller.api.db.prepare(
+        let updateTimingStatsSQL = this.controller.api.db.prepare(
             `UPDATE tasks 
              SET averageRuntime = (SELECT avg(timing) FROM taskstats
                                    WHERE taskID = ?)
@@ -343,7 +344,7 @@ Worker.prototype.updateTask = function() {
             if(err) logToConsole("[updateTask] SQL error:", err);
         });
         // update lastUpdated
-        var updateLastUpdatedSQL = this.controller.api.db.prepare(
+        let updateLastUpdatedSQL = this.controller.api.db.prepare(
             `UPDATE tasks 
              SET lastUpdated = ?
              WHERE id = ?`, 

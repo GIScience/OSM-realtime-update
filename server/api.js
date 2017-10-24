@@ -87,7 +87,7 @@ api.get('/api/tasks', function (req, res) {
         return;
     }
     logToConsole("GET /tasks");
-    var SQLselect = api.db.prepare("SELECT * FROM tasks;");
+    let SQLselect = api.db.prepare("SELECT * FROM tasks;");
     logToConsole("GET tasks; SQL statement to be run:", SQLselect);
     SQLselect.all(function (err, tasks) {
         if(err) res.status(500).send("Error retrieving tasks from the database.");
@@ -98,7 +98,7 @@ api.get('/api/tasks', function (req, res) {
 api.get(['/api/tasks/name=:name'], function (req, res) {
     // responds with the task whose name matches the one given
     logToConsole("/tasks/name=:name, params:", req.params);
-    var SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ?", req.params.name);
+    let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ?", req.params.name);
     logToConsole("GET tasks; SQL statement to be run:", SQLselect,
         "\nParameter:", req.params.name);
     SQLselect.all(function (err, rows) {
@@ -113,7 +113,7 @@ api.get(['/api/tasks/name=:name'], function (req, res) {
 api.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
     // responds with the task whose id matches the one given
     logToConsole("/tasks/id=:id, params:", req.params);
-    var SQLselect = api.db.prepare("SELECT * FROM tasks WHERE id == ?", req.params.id);
+    let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE id == ?", req.params.id);
     logToConsole("GET tasks; SQL statement to be run:", SQLselect, 
         "\nParameter:", req.params.id);
     SQLselect.all(function (err, rows) {
@@ -126,7 +126,7 @@ api.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
 });
 
 api.delete('/api/tasks', function (req, res) {
-    var SQLdelete = api.db.prepare("DELETE FROM tasks WHERE id == ?", req.body.id);
+    let SQLdelete = api.db.prepare("DELETE FROM tasks WHERE id == ?", req.body.id);
     logToConsole("DELETE tasks; SQL statement to be run:", SQLdelete, 
         "\nParameter:", req.body.id);
     SQLdelete.run(function (err) {
@@ -142,11 +142,11 @@ api.post('/api/tasks', function (req, res) {
     // tries to add a task to the database, validates input
     
     // validation
-    var errorlist = [];
-    var name = req.body.name;
-    var coverage = req.body.coverage;
-    var expirationDate = req.body.expirationDate;
-    var updateInterval = req.body.updateInveral || 600;
+    let errorlist = [];
+    let name = req.body.name;
+    let coverage = req.body.coverage;
+    let expirationDate = req.body.expirationDate;
+    let updateInterval = req.body.updateInterval || 600;
     logToConsole("req.body", req.body);
     if (!name || name.match(/^[a-zA-Z0-9]+$/) === null) 
         errorlist.push("name [a-zA-Z]");
@@ -167,7 +167,7 @@ api.post('/api/tasks', function (req, res) {
         }
     }
     if(errorlist.length === 0) {
-        var hint = geojsonhint.hint(coverage);
+        let hint = geojsonhint.hint(coverage);
         if(hint.some(element => element.message.match("right-hand rule"))) {
             coverage = geojsonrewind(coverage);
             hint = geojsonhint.hint(coverage);
@@ -202,7 +202,7 @@ api.post('/api/tasks', function (req, res) {
     else {
         // insert new task into database, sorry for callback hell,
         // can't think of another way to serialize. db.serialize did not work.
-        var SQLinsert = api.db.prepare(
+        let SQLinsert = api.db.prepare(
             `INSERT INTO tasks (name, coverage, expirationDate, addedDate, updateInterval) 
             VALUES (?, ?, ?, ?, ?);`, 
             name, JSON.stringify(coverage), expirationDate, 
@@ -218,8 +218,8 @@ api.post('/api/tasks', function (req, res) {
             }
             logToConsole("Getting id...");
             // get id
-            var id;
-            var SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ? AND " +
+            let id;
+            let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ? AND " +
                 "coverage == ?", name, JSON.stringify(coverage));
             logToConsole("POST task; SQL for id select;", SQLselect,
                 "\nParameters:", name, coverage);
@@ -238,8 +238,8 @@ api.post('/api/tasks', function (req, res) {
                     return;
                 }
                 // generate and update URL
-                var url = api.dataDirectory + id + "_" + name + ".osm.pbf";
-                var SQLupdate = api.db.prepare("UPDATE tasks SET URL = ? WHERE id = ?", 
+                let url = api.dataDirectory + id + "_" + name + ".osm.pbf";
+                let SQLupdate = api.db.prepare("UPDATE tasks SET URL = ? WHERE id = ?", 
                     url, id);
                 logToConsole("POST task; SQL for updating URL:", SQLupdate,
                     "\nParameters:", url, id);
@@ -261,7 +261,7 @@ api.post('/api/tasks', function (req, res) {
 api.get('/api/taskstats', function (req, res) {
     // responds with an array of all task statistics
     logToConsole("GET /taskstats");
-    var SQLselect = api.db.prepare("SELECT * FROM taskstats;");
+    let SQLselect = api.db.prepare("SELECT * FROM taskstats;");
     logToConsole("GET taskstats; SQL statement to be run:", SQLselect);
     SQLselect.all(function (err, taskstats) {
         if(err) res.status(500).send("Error retrieving tasks from the database.");
