@@ -26,17 +26,20 @@ function logToConsole(...args) {
 }
 
 function Controller() {
+    // read config from config.js | '.js' allows comments
+    this.config = require("./config.js").server;
+    this.maxParallelUpdates = this.config.maxParallelUpdates;
+    this.geofabrikMetaDir = this.config.geofabrikMetaDir;
     this.api = api;
     this.workers = [];
-    this.maxParallelUpdates = 5;
-    this.geofabrikMetadir = "geofabrikbounds";
     this.geofabrikMetadata = undefined;
     // update geofabrik metadata and update daily
     this.updateGeoFabrikMetadata();
-    setInterval(this.updateGeoFabrikMetadata.bind(this), 1000*60*60*24);
-    // update list of workers every five seconds
+    setInterval(this.updateGeofabrikMetadata.bind(this), 
+                this.config.geofabrikMetaUpdateInterval*1000);
+    // update list of workers
     this.updateWorkers();
-    setInterval(this.updateWorkers.bind(this), 1000*5);
+    setInterval(this.updateWorkers.bind(this), this.config.workerUpdateInterval*1000);
     logToConsole("Real-time OSM controller running.");
 }
 

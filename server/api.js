@@ -16,7 +16,9 @@ function logToConsole() {
     if(log) console.log(new Date().toISOString() + " [API]:", ...arguments);
 }
 
-api.dataDirectory = "./data/";
+const config = require("./config.js").api;
+
+api.dataDirectory = config.dataDirectory;
 module.exports = api;
 
 // enable body parsing
@@ -26,7 +28,7 @@ api.use(bodyParser.urlencoded({ extended: false }));
 api.use(bodyParser.json());
 
 // Configure logging
-var accessLogStream = fs.createWriteStream('access.log', {flags: 'a'});
+let accessLogStream = fs.createWriteStream(config.accesslog, {flags: 'a'});
 
 // new token to log POST body
 morgan.token('body', function (req) {return "body: " + JSON.stringify(req.body);});
@@ -35,12 +37,12 @@ api.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method ' +
     '":referrer" ":user-agent" ', {stream: accessLogStream}));
 
 // configure listening port
-api.listen(1234, function () {
+api.listen(config.port, function () {
     logToConsole('Real-time OSM API server running.');
 });
 
 // initialise data storage
-const dbname = "tasks.db";
+const dbname = config.taskdb;
 api.db = new sqlite3.Database(dbname);
 api.db.run("CREATE TABLE if not exists tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                                          "name TEXT NOT NULL, " +
