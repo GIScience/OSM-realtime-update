@@ -388,14 +388,18 @@ Worker.prototype.updateTask = function() {
 };
 
 Worker.prototype.terminate = function() {
-    /* terminates running update, clears interval and removes data */
-    if(this.updateProcess) this.updateProcess.kill();
+    /* terminates running update, clip or download processes,
+     * clears interval and removes data */
     clearInterval(this.updateIntervalID);
+    if(this.updateProcess) this.updateProcess.kill();
+    if(this.clipProcess) this.clipProcess.kill();
+    if(this.wgetInitialFileProcess) this.wgetInitialFileProcess.kill();
     const rm = spawnSync('rm', [this.task.URL]);
     if(rm.stderr.toString() !== '') {
         logToConsole(`[terminateWorker] Error removing data for task ${this.task.id}`,
                      `rm stderr:\n ${rm.stderr}`);
-    } else logToConsole("[terminateWorker] Removed worker for task", this.task.id);
+    } 
+    logToConsole("[terminateWorker] Terminated worker for task", this.task.id);
 };
 
 new Controller();
