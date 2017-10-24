@@ -19,7 +19,7 @@ const turfPoint = require('turf-point');
 const api = require('./api.js');
 const log = true;
 
-function logToConsole(...args) {
+function logToConsole() {
     if(log) console.log(new Date().toISOString() + " [Controller]:", ...arguments);
 }
 
@@ -28,11 +28,11 @@ function Controller() {
     this.config = require("./config.js").server;
     this.maxParallelUpdates = this.config.maxParallelUpdates;
     this.geofabrikMetaDir = this.config.geofabrikMetaDir;
+    this.geofabrikMetadata = undefined;
     this.api = api;
     this.workers = [];
-    this.geofabrikMetadata = undefined;
-    // update geofabrik metadata and update daily
-    this.updateGeoFabrikMetadata();
+    // update geofabrik metadata
+    this.updateGeofabrikMetadata();
     setInterval(this.updateGeofabrikMetadata.bind(this), 
                 this.config.geofabrikMetaUpdateInterval*1000);
     // update list of workers
@@ -41,36 +41,37 @@ function Controller() {
     logToConsole("Real-time OSM controller running.");
 }
 
-Controller.prototype.updateGeoFabrikMetadata = function() {
+Controller.prototype.updateGeofabrikMetadata = function() {
     /* update geofabrik metadata and get extract bounds 
      * Includes code by Martin Raifer: 
      * https://github.com/BikeCitizens/geofabrik-extracts */
     
-    logToConsole('[updateGeoFabrikMetadata] Updating GeoFabrik Metadata...');
+    logToConsole('[updateGeofabrikMetadata] Updating Geofabrik Metadata...');
 
     // get boundary files from geofabrik
-    const mkdir = spawnSync('mkdir', ['-p', this.geofabrikMetadir]);
+    const mkdir = spawnSync('mkdir', ['-p', this.geofabrikMetaDir]);
     if(mkdir.stderr.toString() !== '') {
-        logToConsole(`[updateGeoFabrikMetadata] mkdir stderr:\n ${mkdir.stderr}`);
+        logToConsole(`[updateGeofabrikMetadata] mkdir stderr:\n ${mkdir.stderr}`);
     }
 
-    const wget = spawnSync('wget', ['--progress=dot:giga', '-N', 'http://download.geofabrik.de/allkmlfiles.tgz'],
-                            {cwd: `./${this.geofabrikMetadir}/`, maxBuffer: 1024 * 500});
+    const wget = spawnSync('wget', ['--progress=dot:giga', 
+        '-N', 'http://download.geofabrik.de/allkmlfiles.tgz'],
+        {cwd: `./${this.geofabrikMetaDir}/`, maxBuffer: 1024 * 500});
     let notModified = wget.stderr.toString().match("304 Not Modified");
     if(notModified) {
-        logToConsole("[updateGeoFabrikMetadata] Metadata not modified.");
+        logToConsole("[updateGeofabrikMetadata] Metadata not modified.");
         if(this.geofabrikMetadata) return;
     } else if(wget.stderr.toString().match("saved") === null && 
               notModified === null) {
-        logToConsole("[updateGeoFabrikMetadata] Error downloading metadata. wget output:", 
+        logToConsole("[updateGeofabrikMetadata] Error downloading metadata. wget output:", 
             wget.stderr.toString());
         return;
     }
 
     const tar = spawnSync('tar', ['xzf', 'allkmlfiles.tgz'], 
-                          {cwd: `./${this.geofabrikMetadir}/`});
+                          {cwd: `./${this.geofabrikMetaDir}/`});
     if(tar.stderr.toString() !== "") {
-        logToConsole(`[updateGeoFabrikMetadata] tar stderr:\n ${tar.stderr}`);
+        logToConsole(`[updateGeofabrikMetadata] tar stderr:\n ${tar.stderr}`);
     }
 
     function walkSync(dir) {
@@ -96,7 +97,7 @@ Controller.prototype.updateGeoFabrikMetadata = function() {
     }
 
     this.geofabrikMetadata = geojsonMerge(geojsonBoundaries);
-    logToConsole('[updateGeoFabrikMetadata] Successfully updated metadata.');
+    logToConsole('[updateGeofabrikMetadata] Successfully updated metadata.');
 };
 
 Controller.prototype.updateWorkers = function() {
@@ -111,7 +112,7 @@ Controller.prototype.updateWorkers = function() {
         // list of task ids handled by workers
         let taskIDs = tasks.map(task => task.id);
         // delete workers that work on tasks no longer in database
-        this.workers.forEach(function(worker, idx, array) {
+        this.workers.forEach(function(worker, idx) {
             if(worker.task.expirationDate) {
                 let expires = new Date(worker.task.expirationDate);
                 if(expires < Date.now()) {
@@ -119,7 +120,7 @@ Controller.prototype.updateWorkers = function() {
                     // delete from database
                     let SQLdelete = this.api.db.prepare("DELETE FROM tasks WHERE id = ?;",
                         worker.task.id);
-                    SQLdelete.all(function (err, result) {
+                    SQLdelete.all(function (err) {
                         if(err) logToConsole("Error deleting task", worker.task.id,
                             "from database", err);
                     });
@@ -215,7 +216,7 @@ Worker.prototype.clipExtract = function(task, callback) {
         "-o="+clippedpath], {maxBuffer: 1024 * 500}, function (error, stdout, stderr) {
         if (error) {
             logToConsole("[clipExtract] Error clipping data to coverage for task", 
-                this.task.id, "error:", error);
+                this.task.id, "error:", error, "stderr:", stderr, "stdout:", stdout);
             throw "Error clipping file.";
         }
 
@@ -252,8 +253,7 @@ Worker.prototype.createInitialDatafile = function() {
                                          this.controller.geofabrikMetadata);
     if(geofabrikName === undefined) {
         logToConsole("Can't create initial data file for task", this.task.id, 
-                     "- no Geofabrik extract found.");
-        // ToDo Abort worker
+                     "- no Geofabrik extract found. Terminating worker.");
         this.terminate();
         return;
     }
@@ -267,7 +267,8 @@ Worker.prototype.createInitialDatafile = function() {
                                       geofabrikName.length) + "-latest.osm.pbf";
     logToConsole("[createInitialDatafile] Downloading", geofabrikBase + suffix,
                   "for task", this.task.id);
-    this.wgetInitialFile = execFile('wget', ['--progress=dot:giga', '-O', this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
+    this.wgetInitialFileProcess = execFile('wget', ['--progress=dot:giga', '-O', 
+        this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
         function (error, stdout, stderr) {
             if (error) {
                 logToConsole(`Wget error: ${error}. Stdout: ${stdout}. Stderr: ${stderr}`);
@@ -278,7 +279,7 @@ Worker.prototype.createInitialDatafile = function() {
                     geofabrikBase + suffix, "for task", this.task.id);
             }
             this.clipExtract(this.task);
-            delete this.wgetInitialFile;
+            delete this.wgetInitialFileProcess;
         }.bind(this));
 };
 
@@ -295,13 +296,15 @@ Worker.prototype.updateTask = function() {
         logToConsole(`[updateTask] Clipping for task ${this.task.id} running.`);
         return;
     }
-    if(this.wgetInitialFile !== undefined) {
+    if(this.wgetInitialFileProcess !== undefined) {
         logToConsole(`[updateTask] Initial download for task ${this.task.id} running.`);
         return;
     }
     if(this.controller.workers.filter(worker => 
         worker.updateProcess !== undefined).length >= this.controller.maxParallelUpdates){
-        logToConsole(`[updateTask ${this.task.id}] Number of parallel updates exceeds threshold (${this.controller.maxParallelUpdates}), aborting and trying again in 30s.`);
+        logToConsole(`[updateTask ${this.task.id}] Number of parallel updates` +
+            `exceeds threshold (${this.controller.maxParallelUpdates}),` +
+            `aborting and trying again in 30s.`);
         setTimeout(this.updateTask.bind(this), 30000);
         return;
     }
