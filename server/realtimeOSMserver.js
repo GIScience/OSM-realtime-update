@@ -1,4 +1,3 @@
-// jshint esversion: 6, node: true, loopfunc: true
 "use strict";
 
 /* Server that provides real-time OSM data for specific regions in .pbf file format. 
