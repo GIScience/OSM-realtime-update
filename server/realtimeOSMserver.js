@@ -9,7 +9,6 @@ const fs = require("fs");           // file system access
 const path = require("path");
 const {spawnSync, execFile} = require('child_process');
 const togeojson = require('togeojson');
-const WKT = require('wellknown'); // WKT parsing
 const DOMParser = require('xmldom').DOMParser; // for togeojson
 const geojsonFlatten = require('geojson-flatten'); // handle geojsons
 const geojsonArea = require('geojson-area');
@@ -17,7 +16,6 @@ const geojsonMerge = require('geojson-merge');
 const turfErase = require('turf-erase');
 const turfInside = require('turf-inside');
 const turfPoint = require('turf-point');
-//const sqlite3 = require('sqlite3').verbose(); // database access
 const api = require('./api.js');
 const log = true;
 
