@@ -33,6 +33,11 @@ Use the Dockerfile provided.
 
 4. `npm start`
 
+### Config file
+
+You will find a config.js file in the server directory controlling server and api global
+settings. For instance this will let you determine the number of workers to be run in 
+parallel, specific storage paths, ports and update settings. 
 
 ## Usage
 
@@ -77,11 +82,14 @@ Individual resource: `/tasks/:id`
         - creationDate [YYYY-MM-DDTHH:MM:SS+HH:MM]
         - averageRuntime [int]
 
-* Example:
+* Example WKT:
 
-	`curl --data "name=test&coverage=POLYGON((10 20), (20 30), (30 30), (10 10))&expirationDate=2020-05-01" http://localhost:1234/api/tasks`
+        `curl --data "name=test_region&coverage=Polygon ((-0.6124704624397419 53.05768340563769669, -0.22780289125855166 51.92572533117822786, -3.04869841325393898 52.2016268318672374, -3.04869841325393898 52.2016268318672374, -0.6124704624397419 53.05768340563769669))&expirationDate=2020-05-01" http://localhost:1234/api/tasks`
 
-&nbsp;
+* Example GeoJSON:
+      
+        `curl ...`
+
 
 
 #### Delete task
