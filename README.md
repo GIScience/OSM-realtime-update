@@ -15,14 +15,6 @@ Three components:
 
 ## Installation
 
-### Docker
-
-Use the Dockerfile provided.
-
-1. `docker build -t realtimeosm .`
-
-2. `docker run -p 1234:1234 -d realtimeosm`
-
 ### Manual
 
 1. `git clone https://gitlab.gistools.geog.uni-heidelberg.de/giscience/realtime_osm/realtime_osm`
@@ -32,6 +24,15 @@ Use the Dockerfile provided.
 3. `npm install`
 
 4. `npm start`
+
+### Docker (caution: not fully tested)
+
+Use the Dockerfile provided.
+
+1. `docker build -t realtimeosm .`
+
+2. `docker run -p 1234:1234 -d realtimeosm`
+
 
 ### Config file
 
@@ -84,11 +85,11 @@ Individual resource: `/tasks/:id`
 
 * Example WKT:
 
-        `curl --data "name=test_region&coverage=Polygon ((-0.6124704624397419 53.05768340563769669, -0.22780289125855166 51.92572533117822786, -3.04869841325393898 52.2016268318672374, -3.04869841325393898 52.2016268318672374, -0.6124704624397419 53.05768340563769669))&expirationDate=2020-05-01" http://localhost:1234/api/tasks`
+`curl --data "name=test_region&coverage=Polygon ((-0.6124704624397419 53.05768340563769669, -0.22780289125855166 51.92572533117822786, -3.04869841325393898 52.2016268318672374, -3.04869841325393898 52.2016268318672374, -0.6124704624397419 53.05768340563769669))&expirationDate=2020-05-01" http://localhost:1234/api/tasks`
 
 * Example GeoJSON:
       
-        `curl ...`
+`curl ...`
 
 
 
