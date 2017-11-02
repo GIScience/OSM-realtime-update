@@ -19,6 +19,7 @@ function logToConsole() {
 const config = require("./config.js").api;
 
 api.dataDirectory = config.dataDirectory;
+
 module.exports = api;
 
 // enable body parsing
@@ -44,7 +45,8 @@ api.listen(config.port, function () {
 // initialise data storage
 const dbname = config.taskdb;
 api.db = new sqlite3.Database(dbname);
-api.db.run("CREATE TABLE if not exists tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+api.db.serialize(function() {
+    api.db.run("CREATE TABLE if not exists tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                                          "name TEXT NOT NULL, " +
                                          "coverage BLOB NOT NULL, " +
                                          "URL TEXT, " +
@@ -54,8 +56,9 @@ api.db.run("CREATE TABLE if not exists tasks (id INTEGER PRIMARY KEY AUTOINCREME
                                          "addedDate TEXT, " +
                                          "averageRuntime TEXT, " +
                                          "unique(coverage));");
-api.db.run("CREATE TABLE if not exists taskstats (timestamp TEXT PRIMARY KEY, " +
+    api.db.run("CREATE TABLE if not exists taskstats (timestamp TEXT PRIMARY KEY, " +
                                              "taskID INTEGER, timing INTEGER);");
+});
 
 //
 /// serve website
