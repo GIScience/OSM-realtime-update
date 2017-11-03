@@ -4,15 +4,16 @@
     "description": "server that manages and runs tasks to provide realtime osm data",
     "main": "realtimeOSM.js",
     "scripts": {
-        "test": "node inspect realtimeOSMserver.js",
-        "start": "node realtimeOSMserver.js"
+        "start": "node realtimeOSMserver.js",
+        "pretest": "eslint **.js",
+        "test": "node --inspect realtimeOSMserver.js"
     },
     "repository": {
         "type": "git",
         "url": "https://gitlab.gistools.geog.uni-heidelberg.de/giscience/realtime_osm/realtime_osm"
     },
     "author": "Stefan Eberlein",
-    "license": "ISC",
+    "license": "MIT",
     "dependencies": {
         "body-parser": "^1.17.2",
         "express": "^4.15.3",
