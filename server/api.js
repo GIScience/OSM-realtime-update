@@ -180,6 +180,10 @@ api.post('/api/tasks', function (req, res) {
                 req.body.coverage, "\n", e);
             errorlist.push("coverage [WKT string]");
         }
+    } else {
+        // dismiss GeoJSON 'properties' in order to be able to compare GeoJSON
+        // coverages with WKT coverages in database and check for 'unique' constraint
+        coverage.properties = null;
     }
     if(errorlist.length === 0) {
         let hint = geojsonhint.hint(coverage);
