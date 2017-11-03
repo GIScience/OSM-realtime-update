@@ -155,8 +155,8 @@ api.post('/api/tasks', function (req, res) {
     let expirationDate = req.body.expirationDate;
     let updateInterval = req.body.updateInterval || 600;
     logToConsole("req.body", req.body);
-    if (!name || name.match(/^[a-zA-Z0-9]+$/) === null) 
-        errorlist.push("name [a-zA-Z]");
+    if (!name || name.match(/^[a-zA-Z0-9_]+$/) === null)
+        errorlist.push("name [a-zA-Z0-9_]");
     if (typeof(coverage) != "object") {
         try {
             coverage = WKT.parse(coverage);
