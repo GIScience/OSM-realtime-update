@@ -94,6 +94,10 @@ api.get('/api/tasks', function (req, res) {
     logToConsole("GET tasks; SQL statement to be run:", SQLselect);
     SQLselect.all(function (err, tasks) {
         if(err) res.status(500).send("Error retrieving tasks from the database.");
+        tasks.map(obj => {
+            obj.coverage = JSON.parse(obj.coverage);
+            return obj;
+        });
         res.json(tasks);
     });
 });
