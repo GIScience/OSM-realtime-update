@@ -17,9 +17,9 @@ Three components:
 
 ### Manual
 
-1. `git clone https://gitlab.gistools.geog.uni-heidelberg.de/giscience/realtime_osm/realtime_osm`
+1. `git clone https://github.com/GIScience/OSM-realtime-update`
 
-2. `cd realtime_osm/server`
+2. `cd OSM-realtime-update/server`
 
 3. `npm install`
 
@@ -83,13 +83,13 @@ Individual resource: `/tasks/:id`
         - creationDate [YYYY-MM-DDTHH:MM:SS+HH:MM]
         - averageRuntime [int]
 
-* Example WKT:
+* Example WKT/x-www-form-unencoded:
 
-`curl --data "name=test_region&coverage=Polygon ((-0.6124704624397419 53.05768340563769669, -0.22780289125855166 51.92572533117822786, -3.04869841325393898 52.2016268318672374, -3.04869841325393898 52.2016268318672374, -0.6124704624397419 53.05768340563769669))&expirationDate=2020-05-01" http://localhost:1234/api/tasks`
+`curl --data "name=test_region&coverage=Polygon ((-0.61 53.05, -0.22 51.92, -3.04 52.20, -0.61 53.05))&expirationDate=2020-05-01" http://localhost:1234/api/tasks`
 
-* Example GeoJSON:
+* Example GeoJSON/x-www-form-unencoded:
       
-`curl ...`
+`curl --data 'name=test_region&coverage={"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-0.61,53.05],[-3.04,52.20],[-0.22,51.92],[-0.61,53.05]]]}, "properties": {"name": "GB"}}&expirationDate=2020-05-01' http://localhost:1234/api/tasks`
 
 
 
@@ -214,6 +214,6 @@ Algorithm:
 #### Task management
 
 Workers care for a specific task including scheduled updates. A master process
-manages all workers and checks at an interval whether a) workers became obsolet
+manages all workers and checks at an interval whether a) workers became obsolete
 because tasks have been removed or b) a new worker should be spawned because a
 new task has been added.
