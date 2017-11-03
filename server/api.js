@@ -157,6 +157,14 @@ api.post('/api/tasks', function (req, res) {
     logToConsole("req.body", req.body);
     if (!name || name.match(/^[a-zA-Z0-9_]+$/) === null)
         errorlist.push("name [a-zA-Z0-9_]");
+
+    // try to parse string as JSON
+    try {
+        coverage = JSON.parse(coverage);
+    }
+    catch (e) {
+        //ignore error if string is not JSON
+    }
     if (typeof(coverage) != "object") {
         try {
             coverage = WKT.parse(coverage);
