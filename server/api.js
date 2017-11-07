@@ -1,26 +1,70 @@
 "use strict";
 
+const assert = require('assert'); // assertions for testing
 const express = require('express');
 const serveIndex = require('serve-index');
 const bodyParser = require('body-parser');
 const api = express();
-const morgan = require('morgan');   // library for logging
-const fs = require("fs");           // file system access for logging
+const winston = require('winston'); // logging
+const morgan = require('morgan');   // logging express access
 const sqlite3 = require('sqlite3').verbose(); // database access
 const WKT = require('wellknown'); // WKT parsing
 const geojsonhint = require('geojsonhint'); // validate GeoJSONs
 const geojsonrewind = require('geojson-rewind'); // fix right-hand rule for GeoJSONs
-const log = true;
 
-function logToConsole() {
-    if(log) console.log(new Date().toISOString() + " [API]:", ...arguments);
-}
+// load configuration
+const config = require("./config.js");
 
-const config = require("./config.js").api;
+// config sanity checks
+assert(typeof config.api.dataDirectory == "string",
+    "Configuration error: dataDirectory must be a string.");
+assert(typeof config.api.port == 'number',
+    "Configuration error: port must be a number.");
+assert(typeof config.api.accesslog == 'string',
+    "Configuration error: accesslog must be a string");
+assert(typeof config.api.taskdb == 'string',
+    "Configuration error: taskdb must be a string");
+assert((typeof config.loglevel == "number" &
+    config.loglevel >= 0 & config.loglevel < 8) |
+    typeof config.loglevel == "string" &
+    ["emerg", "alert", "crit", "error", "warning",
+        "notice", "info", "debug"].includes(config.loglevel),
+    "Configuration error: loglevel must be either number (0-7) or " +
+    "a syslog level string");
 
-api.dataDirectory = config.dataDirectory;
+// configure logging
+const log = new (winston.Logger)({
+    level: config.loglevel,
+    transports: [
+        new winston.transports.Console({
+            prettyPrint: (object) => JSON.stringify(object),
+            colorize: true,
+            timestamp: () => (new Date()).toISOString()
+        })
+    ]
+});
+log.setLevels(winston.config.syslog.levels);
 
-module.exports = api;
+const accesslogger = new (winston.Logger)({
+    level: 'info',
+    transports: [
+        new (winston.transports.File)({
+            timestamp: () => (new Date()).toISOString(),
+            formatter: (options) =>
+                options.timestamp() + ' ' +
+                winston.config.colorize(options.level) + ' ' +
+                (options.message ? options.message : ''),
+            filename: config.api.accesslog
+        })
+    ]
+});
+accesslogger.setLevels(winston.config.syslog.levels);
+accesslogger.stream = {
+    write: message => accesslogger.info("[API access]", message)
+};
+
+// set data directory for serving data
+api.dataDirectory = config.api.dataDirectory;
 
 // enable body parsing
 // parse application/x-www-form-urlencoded
@@ -28,22 +72,19 @@ api.use(bodyParser.urlencoded({ extended: false }));
 // parse application/json
 api.use(bodyParser.json());
 
-// Configure logging
-let accessLogStream = fs.createWriteStream(config.accesslog, {flags: 'a'});
-
 // new token to log POST body
 morgan.token('body', function (req) {return "body: " + JSON.stringify(req.body);});
 api.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method ' +
     ':url :body HTTP/:http-version" :status :res[content-length] :response-time ms ' +
-    '":referrer" ":user-agent" ', {stream: accessLogStream}));
+    '":referrer" ":user-agent" ', {stream: accesslogger.stream}));
 
 // configure listening port
-api.listen(config.port, function () {
-    logToConsole('Real-time OSM API server running.');
+api.listen(config.api.port, function () {
+    log.notice('Real-time OSM API server running.');
 });
 
 // initialise data storage
-const dbname = config.taskdb;
+const dbname = config.api.taskdb;
 api.db = new sqlite3.Database(dbname);
 api.db.serialize(function() {
     api.db.run("CREATE TABLE if not exists tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -74,7 +115,7 @@ api.use('/data', express.static('./data/'));
 api.use(function(req, res, next) {
     // enable CORS
     res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", 
+    res.header("Access-Control-Allow-Headers",
                "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
@@ -89,9 +130,9 @@ api.get('/api/tasks', function (req, res) {
         res.redirect('/tasks/'+req.query.id);
         return;
     }
-    logToConsole("GET /tasks");
+    log.info("GET /tasks");
     let SQLselect = api.db.prepare("SELECT * FROM tasks;");
-    logToConsole("GET tasks; SQL statement to be run:", SQLselect);
+    log.debug("GET tasks; SQL statement to be run:", SQLselect);
     SQLselect.all(function (err, tasks) {
         if(err) res.status(500).send("Error retrieving tasks from the database.");
         tasks.map(obj => {
@@ -104,13 +145,13 @@ api.get('/api/tasks', function (req, res) {
 
 api.get(['/api/tasks/name=:name'], function (req, res) {
     // responds with the task whose name matches the one given
-    logToConsole("/tasks/name=:name, params:", req.params);
+    log.info("/tasks/name=:name, params:", req.params);
     let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ?", req.params.name);
-    logToConsole("GET tasks; SQL statement to be run:", SQLselect,
+    log.debug("GET tasks; SQL statement to be run:", SQLselect,
         "\nParameter:", req.params.name);
     SQLselect.all(function (err, rows) {
         if(err) {
-            logToConsole("SQL error:", err);
+            log.error("SQL error:", err);
             res.status(500).send("Error retrieving tasks from the database.");
         }
             res.json(rows);
@@ -119,13 +160,13 @@ api.get(['/api/tasks/name=:name'], function (req, res) {
 
 api.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
     // responds with the task whose id matches the one given
-    logToConsole("/tasks/id=:id, params:", req.params);
+    log.info("/tasks/id=:id, params:", req.params);
     let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE id == ?", req.params.id);
-    logToConsole("GET tasks; SQL statement to be run:", SQLselect, 
+    log.debug("GET tasks; SQL statement to be run:", SQLselect,
         "\nParameter:", req.params.id);
     SQLselect.all(function (err, rows) {
         if(err) {
-            logToConsole("SQL error:", err);
+            log.error("SQL error:", err);
             res.status(500).send("Error retrieving tasks from the database.");
         }
         res.json(rows);
@@ -134,11 +175,11 @@ api.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
 
 api.delete('/api/tasks', function (req, res) {
     let SQLdelete = api.db.prepare("DELETE FROM tasks WHERE id == ?", req.body.id);
-    logToConsole("DELETE tasks; SQL statement to be run:", SQLdelete, 
+    log.info("DELETE tasks; SQL statement to be run:", SQLdelete,
         "\nParameter:", req.body.id);
     SQLdelete.run(function (err) {
         if(err) {
-            logToConsole("SQL error:", err);
+            log.error("SQL error:", err);
             res.status(500).send("Error retrieving tasks from the database.");
         }
         res.status(200).send("Succesfully deleted task with ID=" + req.body.id);
@@ -147,14 +188,14 @@ api.delete('/api/tasks', function (req, res) {
 
 api.post('/api/tasks', function (req, res) {
     // tries to add a task to the database, validates input
-    
+
     // validation
     let errorlist = [];
     let name = req.body.name;
     let coverage = req.body.coverage;
     let expirationDate = req.body.expirationDate;
     let updateInterval = req.body.updateInterval || 600;
-    logToConsole("req.body", req.body);
+    log.debug("req.body", req.body);
     if (!name || name.match(/^[a-zA-Z0-9_]+$/) === null)
         errorlist.push("name [a-zA-Z0-9_]");
 
@@ -171,12 +212,12 @@ api.post('/api/tasks', function (req, res) {
             if(coverage === null) {
                 throw new Error("WKT string could not be parsed.");
             }
-            if(coverage.coordinates.reduce((result, subpoly) => 
+            if(coverage.coordinates.reduce((result, subpoly) =>
                                             subpoly.length + result, 0) > 10000) {
                 throw new Error("Polygon has more that 10000 nodes.");
             }
         } catch (e) {
-            logToConsole("Error parsing WKT string while adding task. Coverage:\n", 
+            log.error("Error parsing WKT string while adding task. Coverage:\n",
                 req.body.coverage, "\n", e);
             errorlist.push("coverage [WKT string]");
         }
@@ -198,7 +239,7 @@ api.post('/api/tasks', function (req, res) {
             return true;
         });
         if (hint.length > 0) {
-            errorlist.push("coverage: invalid polygon", 
+            errorlist.push("coverage: invalid polygon",
                            JSON.stringify(hint));
         }
         // check whether coverage is geometry
@@ -214,7 +255,7 @@ api.post('/api/tasks', function (req, res) {
                             "[YYYY-MM-DD(THH:MM:SS+HH:MM)]");
     }
     if(errorlist.length > 0) {
-        res.status(400).send("Error adding task. Invalid parameters: " + 
+        res.status(400).send("Error adding task. Invalid parameters: " +
             errorlist.join(", "));
         return;
     }
@@ -222,34 +263,34 @@ api.post('/api/tasks', function (req, res) {
         // insert new task into database, sorry for callback hell,
         // can't think of another way to serialize. db.serialize did not work.
         let SQLinsert = api.db.prepare(
-            `INSERT INTO tasks (name, coverage, expirationDate, addedDate, updateInterval) 
-            VALUES (?, ?, ?, ?, ?);`, 
-            name, JSON.stringify(coverage), expirationDate, 
+            "INSERT INTO tasks (name, coverage, expirationDate, addedDate, updateInterval)" +
+            "VALUES (?, ?, ?, ?, ?);", name, JSON.stringify(coverage), expirationDate,
             new Date().toISOString(), updateInterval);
-        logToConsole("POST task; SQL for insertion:", SQLinsert,
-            "\nParameters:", name, coverage, expirationDate, 
-            new Date().toISOString(), updateInterval);
+        log.info("POST task; SQL for insertion:", SQLinsert,
+            "\nParameters:", {name: name, coverage: coverage,
+                expirationdate: expirationDate, creationdate: new Date().toISOString(),
+                updateInterval: updateInterval});
         SQLinsert.run(function getID(err) {
             if(err) {
-                logToConsole("SQL error:", err);
+                log.error("SQL error:", err);
                 res.status(500).send("POST task; Error inserting task:" + err);
                 return;
             }
-            logToConsole("Getting id...");
+            log.debug("Getting id...");
             // get id
             let id;
             let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ? AND " +
                 "coverage == ?", name, JSON.stringify(coverage));
-            logToConsole("POST task; SQL for id select;", SQLselect,
+            log.debug("POST task; SQL for id select;", SQLselect,
                 "\nParameters:", name, coverage);
             SQLselect.all(function updateURL(err, rows) {
                 if(err) {
-                    logToConsole("SQL error:", err);
+                    log.error("SQL error:", err);
                     res.status(500).send("POST task; Error retrieving id " +
                     "from database after insertion. Can't generate URL.");
                     return;
-                } 
-                logToConsole("GET id for generating url. Result:", rows);
+                }
+                log.debug("GET id for generating url. Result:", rows);
                 if(rows) id = rows[0].id;
                 else {
                     res.status(500).send("POST task; Error retrieving id " +
@@ -258,13 +299,13 @@ api.post('/api/tasks', function (req, res) {
                 }
                 // generate and update URL
                 let url = api.dataDirectory + id + "_" + name + ".osm.pbf";
-                let SQLupdate = api.db.prepare("UPDATE tasks SET URL = ? WHERE id = ?", 
+                let SQLupdate = api.db.prepare("UPDATE tasks SET URL = ? WHERE id = ?",
                     url, id);
-                logToConsole("POST task; SQL for updating URL:", SQLupdate,
+                log.debug("POST task; SQL for updating URL:", SQLupdate,
                     "\nParameters:", url, id);
                 SQLupdate.run(function(err) {
                     if(err) {
-                        logToConsole("SQL error:", err);
+                        log.error("SQL error:", err);
                         res.status(500).send("POST task; Error updating task url:" + err);
                         return;
                     }
@@ -279,11 +320,14 @@ api.post('/api/tasks', function (req, res) {
 
 api.get('/api/taskstats', function (req, res) {
     // responds with an array of all task statistics
-    logToConsole("GET /taskstats");
+    log.info("GET /taskstats");
     let SQLselect = api.db.prepare("SELECT * FROM taskstats;");
-    logToConsole("GET taskstats; SQL statement to be run:", SQLselect);
+    log.debug("GET taskstats; SQL statement to be run:", SQLselect);
     SQLselect.all(function (err, taskstats) {
         if(err) res.status(500).send("Error retrieving tasks from the database.");
         res.json(taskstats);
     });
 });
+
+module.exports = api;
+

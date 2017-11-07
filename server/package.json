@@ -30,6 +30,7 @@
         "turf-inside": "^3.0.12",
         "turf-point": "^2.0.1",
         "wellknown": "^0.5.0",
+        "winston": "^2.4.0",
         "xmldom": "^0.1.27"
     },
     "eslintConfig": {
@@ -53,5 +54,6 @@
             ],
             "no-console": "off"
         }
-    }
+    },
+    "devDependencies": {}
 }
