@@ -34,15 +34,15 @@ assert(typeof config.server.geofabrikMetaDir == 'string',
     "Configuration error: geofabrikMetaDir must be a number.");
 assert(typeof config.server.geofabrikMetaUpdateInterval == 'number',
     "Configuration error: geofabrikMetaUpdateInterval must be a string");
-assert(typeof config.server.workerUpdateInterval == 'number' &
+assert(typeof config.server.workerUpdateInterval == 'number' &&
     config.server.workerUpdateInterval > 0,
     "Configuration error: workerUpdateInterval must be a positive number");
-assert(typeof config.server.dataAgeThreshold == 'number' &
+assert(typeof config.server.dataAgeThreshold == 'number' &&
     config.server.dataAgeThreshold > 0,
     "Configuration error: dataAgeThreshold must be a positive number");
-assert((typeof config.loglevel == "number" &
-    config.loglevel >= 0 & config.loglevel < 8) |
-    typeof config.loglevel == "string" &
+assert((typeof config.loglevel == "number" &&
+    config.loglevel >= 0 && config.loglevel < 8) ||
+    typeof config.loglevel == "string" &&
     ["emerg", "alert", "crit", "error",
         "warning", "notice", "info", "debug"].includes(config.loglevel),
     "Configuration error: loglevel must be either number (0-7) or " +
