@@ -1,16 +1,21 @@
-"use strict";
-
 /* Server that provides real-time OSM data for specific regions in .pbf file format.
  * Regions are organised in tasks. An API handles task queries and modifications.
  * The server manages a flock of workers, one for each task, that keeps the 
- * OSM data up-to-date. */
+ * OSM data up-to-date. 
+ *
+ * Stefan Eberlein, stefan.eberlein@fastmail.com
+ *
+ * */
+
+"use strict";
 
 const assert = require('assert');
 const fs = require("fs"); // file system access
 const path = require("path");
+const args = require('minimist')(process.argv.slice(2)); // handle command line arguments
 const winston = require('winston'); // logging
-const { spawnSync, execFile } = require('child_process');
-const togeojson = require('togeojson');
+const { spawnSync, execFile } = require('child_process'); // spawning processes
+const togeojson = require('togeojson');        // convert kml to geojson
 const DOMParser = require('xmldom').DOMParser; // for togeojson
 const geojsonFlatten = require('geojson-flatten'); // handle geojsons
 const geojsonArea = require('geojson-area');
@@ -18,10 +23,10 @@ const geojsonMerge = require('geojson-merge');
 const turfErase = require('turf-erase');
 const turfInside = require('turf-inside');
 const turfPoint = require('turf-point');
-const api = require('./api.js');
 
 // read config from config.js ('.js' allows comments)
-const config = require("./config.js");
+const config = require(args.c || "./config.js");
+
 // config sanity checks
 assert(typeof config.server.maxParallelUpdates == "number",
     "Configuration error: maxParallelUpdates must be a number.");
@@ -42,6 +47,10 @@ assert((typeof config.loglevel == "number" &
         "warning", "notice", "info", "debug"].includes(config.loglevel),
     "Configuration error: loglevel must be either number (0-7) or " +
     "a syslog level string");
+
+// start api
+const api = require('./api.js')(config);
+
 // configure logging
 const log = new (winston.Logger)({
     level: config.loglevel,
