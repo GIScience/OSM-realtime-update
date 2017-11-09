@@ -40,9 +40,11 @@ function api(customconfig) {
         level: config.loglevel,
         transports: [
             new winston.transports.Console({
-                prettyPrint: (object) => JSON.stringify(object),
+                stderrLevels: ['error'],
+                prettyPrint: true,
+                depth: 10,
                 colorize: true,
-                timestamp: () => (new Date()).toISOString()
+                timestamp: true
             })
         ]
     });
@@ -51,11 +53,8 @@ function api(customconfig) {
         level: 'info',
         transports: [
             new (winston.transports.File)({
-                timestamp: () => (new Date()).toISOString(),
-                formatter: (options) =>
-                options.timestamp() + ' ' +
-                winston.config.colorize(options.level) + ' ' +
-                (options.message ? options.message : ''),
+                timestamp: true,
+                prettyPrint: (object) => JSON.stringify(object),
                 filename: config.api.accesslog
             })
         ]
@@ -82,7 +81,7 @@ function api(customconfig) {
 
     // configure listening port
     api.listen(config.api.port, function () {
-        log.notice('Real-time OSM API server running.');
+        log.notice(`Real-time OSM API server running on port ${config.api.port}.`);
     });
 
     // initialise data storage
@@ -265,8 +264,9 @@ function api(customconfig) {
             // insert new task into database, sorry for callback hell,
             // can't think of another way to serialize. db.serialize did not work.
             let SQLinsert = api.db.prepare(
-                "INSERT INTO tasks (name, coverage, expirationDate, addedDate, updateInterval)" +
-                "VALUES (?, ?, ?, ?, ?);", name, JSON.stringify(coverage), expirationDate,
+                "INSERT INTO tasks (name, coverage, expirationDate, addedDate," +
+                "updateInterval) VALUES (?, ?, ?, ?, ?);",
+                name, JSON.stringify(coverage), expirationDate,
                 new Date().toISOString(), updateInterval);
             log.info("POST task; SQL for insertion:", SQLinsert,
                 "\nParameters:", {name: name, coverage: coverage,
@@ -278,13 +278,12 @@ function api(customconfig) {
                     res.status(500).send("POST task; Error inserting task:" + err);
                     return;
                 }
-                log.debug("Getting id...");
                 // get id
                 let id;
                 let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ? AND " +
                     "coverage == ?", name, JSON.stringify(coverage));
-                log.debug("POST task; SQL for id select;", SQLselect,
-                    "\nParameters:", name, coverage);
+                //log.debug("POST task; SQL for id select;", SQLselect,
+                //    "\nParameters:", name, coverage);
                 SQLselect.all(function updateURL(err, rows) {
                     if(err) {
                         log.error("SQL error:", err);

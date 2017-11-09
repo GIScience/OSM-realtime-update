@@ -56,6 +56,7 @@ const log = new (winston.Logger)({
     level: config.loglevel,
     transports: [
         new winston.transports.Console({
+            stderrLevels: ['error'],
             prettyPrint: (object) => JSON.stringify(object),
             colorize: true,
             timestamp: () => (new Date()).toISOString()
