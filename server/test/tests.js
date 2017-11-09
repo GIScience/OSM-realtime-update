@@ -12,9 +12,9 @@ let testtasks = [
     {
         name: 'HeidelbergTest',
         comment: 'Task with only geometry as coverage',
-        coverage: 
+        coverage:
         { type: 'Polygon',
-            coordinates: 
+            coordinates:
             [ [ [ 8.65283437203444, 49.43935216405316 ],
                 [ 8.653521017542252, 49.370096908518946 ],
                 [ 8.714632467737564, 49.3662962141664 ],
@@ -24,14 +24,14 @@ let testtasks = [
         expirationDate: '',
         updateInterval: 10,
     },
-    { 
+    {
         name: 'ManchesterTest',
         comment: 'Task with missing CRS in coverage GeoJSON.',
-        coverage: 
+        coverage:
         { type: 'Feature',
-            geometry: 
+            geometry:
             { type: 'Polygon',
-                coordinates: 
+                coordinates:
                 [ [ [ -2.376034289983983, 53.52931602350563 ],
                     [ -2.3883939091246074, 53.326389469199256 ],
                     [ -2.027218372015233, 53.36738006370996 ],
@@ -44,11 +44,11 @@ let testtasks = [
     },
     { name: 'TsuruokaTest',
         comment: 'Optimal task',
-        coverage: 
+        coverage:
         { type: 'Feature',
-            geometry: 
+            geometry:
             { type: 'Polygon',
-                coordinates: 
+                coordinates:
                 [ [ [ 138.75734504235209, 37.469586218663395 ],
                     [ 138.7697046614927, 37.37633753865222 ],
                     [ 138.93655951989115, 37.41506892489841 ],
@@ -59,14 +59,14 @@ let testtasks = [
         expirationDate: '',
         updateInterval: 10,
     },
-    { 
+    {
         name: 'LeipzigTest',
         comment: 'Task with expiration date',
-        coverage: 
+        coverage:
         { type: 'Feature',
-            geometry: 
+            geometry:
             { type: 'Polygon',
-                coordinates: 
+                coordinates:
                 [ [ [ 12.306189537048354, 51.39269229939205 ],
                     [ 12.302069664001477, 51.304775193168496 ],
                     [ 12.442145347595229, 51.28931867687132 ],
@@ -75,13 +75,13 @@ let testtasks = [
                 crs: { type: 'name', properties: { name: 'EPSG:4326' } } },
             properties: null },
         // expirationDate: now + 10 min
-        expirationDate: (new Date(new Date().getTime() + 10*60000)).toISOString(), 
+        expirationDate: (new Date(new Date().getTime() + 10*60000)).toISOString(),
         updateInterval: 10,
     }
 ];
 
 function makeTaskComparable(task){
-    // deletes data from task JSON that is 
+    // deletes data from task JSON that is
     // hard to compare and thus hard to test
     delete task.URL;
     delete task.averageRuntime;
@@ -99,11 +99,11 @@ function makeTaskComparable(task){
 let testfunctions = {
     taskspecific: [
     function POSTtask(task) {
-        // Action: POST:x-www-form-unencoded a task using curl 
+        // Action: POST:x-www-form-unencoded a task using curl
         // Expected result: JSON response with the task information
 
         let commandstring = `curl --data 'name=${task.name}&` +
-            `coverage=${JSON.stringify(task.coverage)}&` + 
+            `coverage=${JSON.stringify(task.coverage)}&` +
             `updateInterval=${task.updateInterval}&` +
             `expirationDate=${task.expirationDate}' ` +
             `http://localhost:1234/api/tasks`;
@@ -115,7 +115,7 @@ let testfunctions = {
             throw Error("Parsing API response:\n\n" + err +
                 "\n\nResponse: " + curl.toString());
         }
-        // save id for future tests TODO
+        // save id for future tests
         let i = testtasks.findIndex((item) => item.name === response.name);
         testtasks[i].id = response.id;
         task.id = response.id;
@@ -124,7 +124,7 @@ let testfunctions = {
         task = makeTaskComparable(task);
         // compare response task with posted task
         assert.deepEqual(response, task,
-            "API response does not equal task JSON.\nTask: " + 
+            "API response does not equal task JSON.\nTask: " +
             JSON.stringify(task) + "\nResponse: " + JSON.stringify(response));
         console.log("Test successfull!\n");
         return 0;
@@ -146,7 +146,7 @@ let testfunctions = {
                 "\n\nResponse: " + curl.toString());
         }
         assert.deepEqual(response, tasks,
-            "API response does not equal tasks array.\nTasks: " + 
+            "API response does not equal tasks array.\nTasks: " +
             JSON.stringify(tasks) + "\nResponse: " + JSON.stringify(response));
         console.log("Test successfull!\n");
         return 0;
@@ -158,7 +158,7 @@ let testfunctions = {
 
 // initialise test server instance and run tests
 let serverlog = "";
-const server = child.spawn("node", ["./realtimeOSMserver.js", 
+const server = child.spawn("node", ["./realtimeOSMserver.js",
     "-c", "./test/testconfig.js"], {stdio: 'pipe'});
 server.stdout.on('data', (data) => serverlog += data);
 server.stderr.on('data', (data) => serverlog += data);

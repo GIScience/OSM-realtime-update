@@ -1,7 +1,7 @@
 /* Server that provides real-time OSM data for specific regions in .pbf file format.
  * Regions are organised in tasks. An API handles task queries and modifications.
- * The server manages a flock of workers, one for each task, that keeps the 
- * OSM data up-to-date. 
+ * The server manages a flock of workers, one for each task, that keeps the
+ * OSM data up-to-date.
  *
  * Stefan Eberlein, stefan.eberlein@fastmail.com
  *
@@ -84,8 +84,8 @@ function Controller() {
 }
 
 Controller.prototype.updateGeofabrikMetadata = function() {
-    /* update geofabrik metadata and get extract bounds 
-     * Includes code by Martin Raifer: 
+    /* update geofabrik metadata and get extract bounds
+     * Includes code by Martin Raifer:
      * https://github.com/BikeCitizens/geofabrik-extracts */
 
     log.info('Updating Geofabrik Metadata...');
@@ -143,7 +143,7 @@ Controller.prototype.updateGeofabrikMetadata = function() {
 };
 
 Controller.prototype.updateWorkers = function() {
-    /* loops through list of tasks in db and 
+    /* loops through list of tasks in db and
      * starts/terminates workers accordingly */
 
     let oldWorkerIDs = this.workers.map(worker => worker.task.id);
@@ -225,7 +225,7 @@ Worker.prototype.findExtract = function(given, extractsGeoJSON) {
 };
 
 Worker.prototype.clipExtract = function(task, callback) {
-    /* clips task data file at task.URL to task.coverage 
+    /* clips task data file at task.URL to task.coverage
      * using osmconvert */
 
     // convert coverage GeoJSON to Polygon Filter File Format:
@@ -233,7 +233,7 @@ Worker.prototype.clipExtract = function(task, callback) {
 
     log.debug("Clipping data to coverage for task", this.task.id);
     // Generate poly string
-    // check if task.coverage.properties exists 
+    // check if task.coverage.properties exists
     let header = this.task.coverage.properties !== null ?
         this.task.coverage.properties.name || "undefined" : "undefined";
     let polygons = [];

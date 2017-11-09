@@ -8,14 +8,14 @@ const config = {
         5 notice: a normal but significant condition
         6 info: a purely informational message
         7 debug: messages to debug an application */
-    loglevel: 'notice',     
+    loglevel: 'notice',
     server: {
         maxParallelUpdates: 6,
         geofabrikMetaDir: "./geofabrikbounds/",
         // seconds
         geofabrikMetaUpdateInterval: 60*60*24,
         workerUpdateInterval: 5,
-        // time threshold after which data is redownloaded 
+        // time threshold after which data is redownloaded
         // instead of updated (days)
         dataAgeThreshold: 1,
     },
