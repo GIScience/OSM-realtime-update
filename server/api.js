@@ -339,7 +339,9 @@ function api(customconfig) {
     return api;
 }
 
-
-module.exports = function(config) {
-    return new api(config);
+module.exports = function(customconfig) {
+    return new api(customconfig);
 };
+
+// init api if run standalone
+if (require.main === module) new api();
