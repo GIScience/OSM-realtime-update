@@ -251,9 +251,15 @@ function api(customconfig) {
             if(!coverage.hasOwnProperty("geometry")) {
                 errorlist.push("coverage: submitted feature does not have geometry property");
             }
-            if (expirationDate && isNaN(Date.parse(expirationDate)))
-                errorlist.push("expirationDate in ISO 8601, hours optional" +
-                    "[YYYY-MM-DD(THH:MM:SS+HH:MM)]");
+            if (expirationDate) {
+                if (isNaN(Date.parse(expirationDate))) {
+                    errorlist.push("expirationDate in ISO 8601, hours optional" +
+                        "[YYYY-MM-DD(THH:MM:SS+HH:MM)]");
+                } else {
+                    // generate ISO Date String
+                    expirationDate = new Date(expirationDate).toISOString();
+                }
+            }
         }
         if(errorlist.length > 0) {
             res.status(400).send("Error adding task. Invalid parameters: " +
