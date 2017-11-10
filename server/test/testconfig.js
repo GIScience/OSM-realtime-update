@@ -14,7 +14,7 @@ const config = {
         geofabrikMetaDir: "./test/testgeofabrikbounds/",
         // seconds
         geofabrikMetaUpdateInterval: 60*60*24,
-        workerUpdateInterval: 5,
+        workerUpdateInterval: 1,
         // time threshold after which data is redownloaded
         // instead of updated (days)
         dataAgeThreshold: 1,

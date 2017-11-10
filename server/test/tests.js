@@ -9,6 +9,7 @@ const child = require('child_process');
 const assert = require('assert');
 
 let testtasks = [
+    // missing tasks: Duplicate names
     {
         name: 'HeidelbergTest',
         comment: 'Task with only geometry as coverage',
@@ -74,8 +75,8 @@ let testtasks = [
                     [ 12.306189537048354, 51.39269229939205 ] ] ],
                 crs: { type: 'name', properties: { name: 'EPSG:4326' } } },
             properties: null },
-        // expirationDate: now + 10 min
-        expirationDate: (new Date(new Date().getTime() + 10*60000)).toISOString(),
+        // expirationDate: now + 1 min
+        expirationDate: (new Date(new Date().getTime() + 1*60000)).toISOString(),
         updateInterval: 10,
     }
 ];
@@ -96,64 +97,137 @@ function makeTaskComparable(task){
     return task;
 }
 
-let testfunctions = {
-    taskspecific: [
-    function POSTtask(task) {
-        // Action: POST:x-www-form-unencoded a task using curl
-        // Expected result: JSON response with the task information
+let testfun = {
+    taskspecific: {
+        POSTtask: function POSTtask(testtask) {
+            // Action: POST:x-www-form-unencoded a task using curl
+            // Expected result: JSON response with the task information
 
-        let commandstring = `curl --data 'name=${task.name}&` +
-            `coverage=${JSON.stringify(task.coverage)}&` +
-            `updateInterval=${task.updateInterval}&` +
-            `expirationDate=${task.expirationDate}' ` +
-            `http://localhost:1234/api/tasks`;
-        const curl = child.execSync(commandstring, {stdio: "pipe"});
-        let response;
-        try{
-            response = JSON.parse(curl.toString());
-        } catch (err) {
-            throw Error("Parsing API response:\n\n" + err +
-                "\n\nResponse: " + curl.toString());
+            // deep clone test task since we will modify it to make it
+            // comparable
+            let task = JSON.parse(JSON.stringify(testtask));
+            let commandstring = `curl --data 'name=${task.name}&` +
+                `coverage=${JSON.stringify(task.coverage)}&` +
+                `updateInterval=${task.updateInterval}&` +
+                `expirationDate=${task.expirationDate}' ` +
+                `http://localhost:1234/api/tasks`;
+            const curl = child.execSync(commandstring, {stdio: "pipe"});
+            let response;
+            try{
+                response = JSON.parse(curl.toString());
+            } catch (err) {
+                throw Error("Parsing API response:\n\n" + err +
+                    "\n\nResponse: " + curl.toString());
+            }
+            // save id for future tests
+            let i = testtasks.findIndex((item) => item.name === response.name);
+            testtasks[i].id = response.id;
+            task.id = response.id;
+            // delete all unpredictable data
+            response = makeTaskComparable(response);
+            task = makeTaskComparable(task);
+            // compare response task with posted task
+            assert.deepEqual(response, task,
+                "API response does not equal task JSON.\nTask: " +
+                JSON.stringify(task) + "\nResponse: " + JSON.stringify(response));
+            console.log("POSTtask test successfull!\n");
+            return 0;
+        },
+        GETtaskByName: function GETtaskByName(testtask) {
+            // deep clone
+            let task = JSON.parse(JSON.stringify(testtask));
+            task = makeTaskComparable(task);
+            let commandstring = `curl http://localhost:1234/api/tasks/name=${task.name}`;
+            const curl = child.execSync(commandstring, {stdio: "pipe"});
+            let response;
+            try{
+                response = JSON.parse(curl.toString());
+                assert(response.length === 1, "Response contains more than one task.");
+                response = makeTaskComparable(response[0]);
+            } catch (err) {
+                throw Error("Parsing API response:\n\n" + err +
+                    "\n\nResponse: " + curl.toString());
+            }
+            assert.deepEqual(response, task,
+                "API response does not equal tasks array.\nTasks: " +
+                JSON.stringify(task) + "\nResponse: " + JSON.stringify(response));
+            console.log("GETtaskByName test successfull!\n");
+            return response;
         }
-        // save id for future tests
-        let i = testtasks.findIndex((item) => item.name === response.name);
-        testtasks[i].id = response.id;
-        task.id = response.id;
-        // delete all unpredictable data
-        response = makeTaskComparable(response);
-        task = makeTaskComparable(task);
-        // compare response task with posted task
-        assert.deepEqual(response, task,
-            "API response does not equal task JSON.\nTask: " +
-            JSON.stringify(task) + "\nResponse: " + JSON.stringify(response));
-        console.log("Test successfull!\n");
-        return 0;
     },
-    //function GETtaskByName(task) {
-    //},
-    ],
-    onetime: [
-    function GETtasks() {
-        let tasks = testtasks.map(task => makeTaskComparable(task));
-        let commandstring = `curl http://localhost:1234/api/tasks`;
-        const curl = child.execSync(commandstring, {stdio: "pipe"});
-        let response;
-        try{
-            response = JSON.parse(curl.toString());
-            response = response.map(task => makeTaskComparable(task));
-        } catch (err) {
-            throw Error("Parsing API response:\n\n" + err +
-                "\n\nResponse: " + curl.toString());
+    onetime: {
+        GETtasks: function GETtasks() {
+            // deep clone
+            let tasks = JSON.parse(JSON.stringify(testtasks));
+            tasks = tasks.map(task => makeTaskComparable(task));
+            let commandstring = `curl http://localhost:1234/api/tasks`;
+            const curl = child.execSync(commandstring, {stdio: "pipe"});
+            let response;
+            try{
+                response = JSON.parse(curl.toString());
+                response = response.map(task => makeTaskComparable(task));
+            } catch (err) {
+                throw Error("Parsing API response:\n\n" + err +
+                    "\n\nResponse: " + curl.toString());
+            }
+            assert.deepEqual(response, tasks,
+                "API response does not equal tasks array.\nTasks: " +
+                JSON.stringify(tasks) + "\nResponse: " + JSON.stringify(response));
+            console.log("GETtasks test successfull!\n");
+            return response;
+        },
+        DELETEtask: function DELETEtasks() {
+            let tasks = JSON.parse(JSON.stringify(testtasks));
+            let tasksForRemoval = ["ManchesterTest", "TsuruokaTest"];
+            tasks = tasks.filter(task => tasksForRemoval.includes(task.name));
+            tasks.forEach(task => {
+                let curlstring = `curl --data "id=${task.id}" -X DELETE ` +
+                                 `http://localhost:1234/api/tasks`;
+                const deletecurl = child.execSync(curlstring, {stdio: "pipe"});
+                let response = deletecurl.toString();
+                assert(response === "Succesfully deleted task with ID=" + task.id,
+                       `DELETE not successfull, response: ${response}`);
+                // test if DELETE really was successfull
+                curlstring = `curl http://localhost:1234/api/tasks/` +
+                             `name=${task.name}`;
+                const namecurl = child.execSync(curlstring, {stdio: "pipe"});
+                try{
+                    response = JSON.parse(namecurl.toString());
+                } catch (err) {
+                    throw Error("Parsing API response:\n\n" + err +
+                        "\n\nResponse: " + namecurl.toString());
+                }
+                assert(response.length === 0, "Response is not empty.");
+            });
+            console.log("DELETEtasks successfull!");
+
+        },
+        testTaskExpiration: function testTaskExpiration() {
+            // deep clone
+            let tasks = JSON.parse(JSON.stringify(testtasks));
+            tasks = tasks.filter(task => task.expirationDate !== "");
+            tasks.forEach(task => {
+                let expires = new Date(task.expirationDate);
+                let countdown = (expires.getTime() - (new Date()).getTime()) + 10 * 1000;
+                console.log(`testTaskExpiration for task ${task.name}.`,
+                    `Countdown: ${countdown/1000}s`);
+                setTimeout(function() {
+                    let curlstring = `curl http://localhost:1234/api/tasks/` +
+                                     `name=${task.name}`;
+                    const curl = child.execSync(curlstring, {stdio: "pipe"});
+                    let response;
+                    try{
+                        response = JSON.parse(curl.toString());
+                    } catch (err) {
+                        throw Error("Parsing API response:\n\n" + err +
+                            "\n\nResponse: " + curl.toString());
+                    }
+                    assert(response.length === 0, "Response is not empty.");
+                    console.log(`\ntestTaskExpiration for task ${task.name} successfull.\n`);
+                },  countdown);
+            });
         }
-        assert.deepEqual(response, tasks,
-            "API response does not equal tasks array.\nTasks: " +
-            JSON.stringify(tasks) + "\nResponse: " + JSON.stringify(response));
-        console.log("Test successfull!\n");
-        return 0;
-    },
-    //function DELETEtask(task) {
-    //}
-    ]
+    }
 };
 
 // initialise test server instance and run tests
@@ -163,24 +237,27 @@ const server = child.spawn("node", ["./realtimeOSMserver.js",
 server.stdout.on('data', (data) => serverlog += data);
 server.stderr.on('data', (data) => serverlog += data);
 
-// wait 2 seconds for startup, then start testing
+// wait a second for startup, then start testing
 setTimeout(function() {
     try {
         // start testing
         for (let task of testtasks) {
-            for (let fun of testfunctions.taskspecific) {
-                console.log("Testing", fun.name, "for task", task.name, ":", task.comment);
+            for (let fun in testfun.taskspecific) {
+                fun = testfun.taskspecific[fun];
+                console.log("Running test:", fun.name,
+                            "for task", task.name, ":", task.comment);
                 fun(task);
             }
         }
-        for (let fun of testfunctions.onetime) {
-            console.log("Testing", fun.name);
+        for (let fun in testfun.onetime) {
+            fun = testfun.onetime[fun];
+            console.log("Running test:", fun.name);
             fun();
         }
 
         // finish
-        console.log("All tests successfull, keeping server running for 5 for minutes " +
-            "and redirecting output to console.\n");
+        console.log("All tests ran, keep server running for 5 for minutes " +
+                    "and redirecting output to console.\n");
         setTimeout(function() {
            server.stdout.on('data', (data) => console.log(data.toString().trim()));
            server.stderr.on('data', (data) => console.log(data.toString().trim()));
