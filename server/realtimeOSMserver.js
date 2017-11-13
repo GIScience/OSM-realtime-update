@@ -257,6 +257,10 @@ Worker.prototype.clipExtract = function(task, callback) {
     this.clipProcess = execFile('osmconvert', [this.task.URL, "-B=" + polypath,
         "-o=" + clippedpath], {maxBuffer: 1024 * 500}, function (error, stdout, stderr) {
         if (error) {
+            if(error.killed === true) {
+                log.warning(`clipping process for task ${this.task.id} killed`);
+                return;
+            }
             log.error(
                 "Error clipping data to coverage for task",
                 this.task.id, "error:", error, "stderr:", stderr, "stdout:", stdout
@@ -324,8 +328,10 @@ Worker.prototype.createInitialDatafile = function() {
         this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
         function (error, stdout, stderr) {
             if (error) {
-                log.error("Wget error:", error, "Stdout:", stdout,
-                    "Stderr:", stderr);
+                if(error.killed === true) return;
+                log.error(`wget error: ${error}\nstdout: ${stdout}\n`,
+                          `stderr: ${stderr}\n`,
+                          `processinfo:`, this.wgetInitialFileProcess);
                 return;
             }
             if (stderr.match("saved")) {
@@ -425,7 +431,9 @@ Worker.prototype.updateTask = function() {
         this.task.URL, newfile], {maxBuffer: 1024 * 500},
         function (error, stdout, stderr) {
             if (error) {
-                if(error.toString().match("Your OSM file is already up-to-date.")) {
+                if(error.killed === true) {
+                    log.warning(`osmupdate process for task ${this.task.id} killed`);
+                } else if(error.toString().match("Your OSM file is already up-to-date.")) {
                     log.info(`Task ${this.task.id} already up-to-date.`);
                 } else log.error(`Error updating task. error: ${error}`);
             } else {
