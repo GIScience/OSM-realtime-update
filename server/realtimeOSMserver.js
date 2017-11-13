@@ -1,16 +1,21 @@
-"use strict";
-
 /* Server that provides real-time OSM data for specific regions in .pbf file format.
  * Regions are organised in tasks. An API handles task queries and modifications.
- * The server manages a flock of workers, one for each task, that keeps the 
- * OSM data up-to-date. */
+ * The server manages a flock of workers, one for each task, that keeps the
+ * OSM data up-to-date.
+ *
+ * Stefan Eberlein, stefan.eberlein@fastmail.com
+ *
+ * */
+
+"use strict";
 
 const assert = require('assert');
 const fs = require("fs"); // file system access
 const path = require("path");
+const args = require('minimist')(process.argv.slice(2)); // handle command line arguments
 const winston = require('winston'); // logging
-const { spawnSync, execFile } = require('child_process');
-const togeojson = require('togeojson');
+const { spawnSync, execFile } = require('child_process'); // spawning processes
+const togeojson = require('togeojson');        // convert kml to geojson
 const DOMParser = require('xmldom').DOMParser; // for togeojson
 const geojsonFlatten = require('geojson-flatten'); // handle geojsons
 const geojsonArea = require('geojson-area');
@@ -18,10 +23,10 @@ const geojsonMerge = require('geojson-merge');
 const turfErase = require('turf-erase');
 const turfInside = require('turf-inside');
 const turfPoint = require('turf-point');
-const api = require('./api.js');
 
 // read config from config.js ('.js' allows comments)
-const config = require("./config.js");
+const config = require(args.c || "./config.js");
+
 // config sanity checks
 assert(typeof config.server.maxParallelUpdates == "number",
     "Configuration error: maxParallelUpdates must be a number.");
@@ -29,24 +34,29 @@ assert(typeof config.server.geofabrikMetaDir == 'string',
     "Configuration error: geofabrikMetaDir must be a number.");
 assert(typeof config.server.geofabrikMetaUpdateInterval == 'number',
     "Configuration error: geofabrikMetaUpdateInterval must be a string");
-assert(typeof config.server.workerUpdateInterval == 'number' &
+assert(typeof config.server.workerUpdateInterval == 'number' &&
     config.server.workerUpdateInterval > 0,
     "Configuration error: workerUpdateInterval must be a positive number");
-assert(typeof config.server.dataAgeThreshold == 'number' &
+assert(typeof config.server.dataAgeThreshold == 'number' &&
     config.server.dataAgeThreshold > 0,
     "Configuration error: dataAgeThreshold must be a positive number");
-assert((typeof config.loglevel == "number" &
-    config.loglevel >= 0 & config.loglevel < 8) |
-    typeof config.loglevel == "string" &
+assert((typeof config.loglevel == "number" &&
+    config.loglevel >= 0 && config.loglevel < 8) ||
+    typeof config.loglevel == "string" &&
     ["emerg", "alert", "crit", "error",
         "warning", "notice", "info", "debug"].includes(config.loglevel),
     "Configuration error: loglevel must be either number (0-7) or " +
     "a syslog level string");
+
+// start api
+const api = require('./api.js')(config);
+
 // configure logging
 const log = new (winston.Logger)({
     level: config.loglevel,
     transports: [
         new winston.transports.Console({
+            stderrLevels: ['error'],
             prettyPrint: (object) => JSON.stringify(object),
             colorize: true,
             timestamp: () => (new Date()).toISOString()
@@ -74,8 +84,8 @@ function Controller() {
 }
 
 Controller.prototype.updateGeofabrikMetadata = function() {
-    /* update geofabrik metadata and get extract bounds 
-     * Includes code by Martin Raifer: 
+    /* update geofabrik metadata and get extract bounds
+     * Includes code by Martin Raifer:
      * https://github.com/BikeCitizens/geofabrik-extracts */
 
     log.info('Updating Geofabrik Metadata...');
@@ -133,7 +143,7 @@ Controller.prototype.updateGeofabrikMetadata = function() {
 };
 
 Controller.prototype.updateWorkers = function() {
-    /* loops through list of tasks in db and 
+    /* loops through list of tasks in db and
      * starts/terminates workers accordingly */
 
     let oldWorkerIDs = this.workers.map(worker => worker.task.id);
@@ -215,7 +225,7 @@ Worker.prototype.findExtract = function(given, extractsGeoJSON) {
 };
 
 Worker.prototype.clipExtract = function(task, callback) {
-    /* clips task data file at task.URL to task.coverage 
+    /* clips task data file at task.URL to task.coverage
      * using osmconvert */
 
     // convert coverage GeoJSON to Polygon Filter File Format:
@@ -223,7 +233,7 @@ Worker.prototype.clipExtract = function(task, callback) {
 
     log.debug("Clipping data to coverage for task", this.task.id);
     // Generate poly string
-    // check if task.coverage.properties exists 
+    // check if task.coverage.properties exists
     let header = this.task.coverage.properties !== null ?
         this.task.coverage.properties.name || "undefined" : "undefined";
     let polygons = [];
