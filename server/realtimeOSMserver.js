@@ -265,7 +265,6 @@ Worker.prototype.clipExtract = function(task, callback) {
                 "Error clipping data to coverage for task",
                 this.task.id, "error:", error, "stderr:", stderr, "stdout:", stdout
             );
-            throw "Error clipping file.";
         }
 
         // replace original file with clipped file
@@ -445,18 +444,10 @@ Worker.prototype.updateTask = function() {
                                      `mv stderr:\n ${mv.stderr}`);
                     } else {
                         // clip new file and finish task update (insert timings)
-                        try{
-                            this.clipExtract(this.task, finishTaskUpdate.bind(this));
-                        }
-                        catch(err) {
-                            log.error(
-                                "[updateTask] Error clipping updated file for task",
-                                this.task.id
-                            );
-                            return;
-                        }
+                        this.clipExtract(this.task, finishTaskUpdate.bind(this));
                     }
-                }
+                } else log.warning(`Unexpected osmupdate output. stdout: ${stdout}.`,
+                    `stderr: ${stderr}`);
             }
             delete this.updateProcess;
         }.bind(this));
