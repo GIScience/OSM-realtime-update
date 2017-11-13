@@ -199,7 +199,7 @@ let testfun = {
                 }
                 assert(response.length === 0, "Response is not empty.");
             });
-            console.log("DELETEtasks successfull!");
+            console.log("DELETEtasks successfull!\n");
 
         },
         testTaskExpiration: function testTaskExpiration() {
@@ -256,13 +256,13 @@ setTimeout(function() {
         }
 
         // finish
-        console.log("All tests ran, keep server running for 5 for minutes " +
+        console.log("All tests ran, keep server running for 10 minutes " +
                     "and redirecting output to console.\n");
         setTimeout(function() {
            server.stdout.on('data', (data) => console.log(data.toString().trim()));
            server.stderr.on('data', (data) => console.log(data.toString().trim()));
         }, 1000);
-        setTimeout(() => server.kill(), 60000 * 5);
+        setTimeout(() => server.kill(), 60000 * 10);
     } catch (err) {
         console.log("Error occurred. Server log:\n", serverlog);
         server.kill();
