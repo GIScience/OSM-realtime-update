@@ -158,7 +158,7 @@ Controller.prototype.updateWorkers = function() {
             if(worker.task.expirationDate) {
                 let expires = new Date(worker.task.expirationDate);
                 if(expires < Date.now()) {
-                    log.info(`Task ${worker.task.id} expired. Deleting task and worker.`);
+                    log.info(`Task ${worker.task.id} expired. Deleting task from db.`);
                     // delete from database
                     let SQLdelete = this.api.db.prepare("DELETE FROM tasks WHERE id = ?;",
                         worker.task.id);
@@ -258,7 +258,7 @@ Worker.prototype.clipExtract = function(task, callback) {
         "-o=" + clippedpath], {maxBuffer: 1024 * 500}, function (error, stdout, stderr) {
         if (error) {
             log.error(
-                "[clipExtract] Error clipping data to coverage for task",
+                "Error clipping data to coverage for task",
                 this.task.id, "error:", error, "stderr:", stderr, "stdout:", stdout
             );
             throw "Error clipping file.";
@@ -294,19 +294,15 @@ Worker.prototype.clipExtract = function(task, callback) {
 Worker.prototype.createInitialDatafile = function() {
     /* downloads initial data file in .pbf-format */
     if(!this.controller.geofabrikMetadata) {
-        log.warning(
-            "Can't create initial data file for task", this.task.id,
-            "- no Geofabrik metadata."
-        );
+        log.warning("Can't create initial data file for task", this.task.id,
+                    "- no Geofabrik metadata.");
         return;
     }
     let geofabrikName = this.findExtract(this.task.coverage,
                                          this.controller.geofabrikMetadata);
     if(geofabrikName === undefined) {
-        log.warning(
-            "Can't create initial data file for task", this.task.id,
-            "- no Geofabrik extract found. Terminating worker."
-        );
+        log.warning("Can't create initial data file for task", this.task.id,
+                    "- no Geofabrik extract found. Terminating worker.");
         this.terminate();
         return;
     }
@@ -360,9 +356,7 @@ Worker.prototype.updateTask = function() {
         return;
     }
     if(this.wgetInitialFileProcess !== undefined) {
-        log.info(
-            `Abort update, initial download for task ${this.task.id} running.`
-        );
+        log.info(`Abort update, initial download for task ${this.task.id} running.`);
         return;
     }
     let nParallelUpdates = this.controller.workers.filter(worker =>

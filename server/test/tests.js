@@ -209,7 +209,7 @@ let testfun = {
             tasks.forEach(task => {
                 let expires = new Date(task.expirationDate);
                 let countdown = (expires.getTime() - (new Date()).getTime()) + 10 * 1000;
-                console.log(`testTaskExpiration for task ${task.name}.`,
+                console.log(`Test: TaskExpiration for task ${task.name}.`,
                     `Countdown: ${countdown/1000}s`);
                 setTimeout(function() {
                     let curlstring = `curl http://localhost:1234/api/tasks/` +
@@ -223,7 +223,8 @@ let testfun = {
                             "\n\nResponse: " + curl.toString());
                     }
                     assert(response.length === 0, "Response is not empty.");
-                    console.log(`\ntestTaskExpiration for task ${task.name} successfull.\n`);
+                    console.log(`\nTest: TaskExpiration for task ${task.name}`,
+                                `successfull.\n`);
                 },  countdown);
             });
         }
