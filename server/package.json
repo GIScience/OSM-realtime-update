@@ -5,8 +5,9 @@
     "main": "realtimeOSM.js",
     "scripts": {
         "start": "node realtimeOSMserver.js",
-        "pretest": "eslint **.js",
-        "test": "node --inspect realtimeOSMserver.js"
+        "pretest": "eslint **.js && rm -r -f ./test/testdata ./test/testgeofabrikbounds ./test/test.db ./test/testaccess.log",
+        "test": "node test/tests.js",
+        "posttest": "rm -r -f ./test/testdata ./test/testgeofabrikbounds ./test/test.db ./test/testaccess.log"
     },
     "repository": {
         "type": "git",
@@ -22,6 +23,7 @@
         "geojson-merge": "^0.3.0",
         "geojson-rewind": "^0.2.0",
         "geojsonhint": "^2.0.0",
+        "minimist": "^1.2.0",
         "morgan": "^1.8.2",
         "serve-index": "^1.9.1",
         "sqlite3": "^3.1.8",

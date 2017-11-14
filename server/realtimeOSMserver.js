@@ -1,16 +1,21 @@
-"use strict";
-
 /* Server that provides real-time OSM data for specific regions in .pbf file format.
  * Regions are organised in tasks. An API handles task queries and modifications.
- * The server manages a flock of workers, one for each task, that keeps the 
- * OSM data up-to-date. */
+ * The server manages a flock of workers, one for each task, that keeps the
+ * OSM data up-to-date.
+ *
+ * Stefan Eberlein, stefan.eberlein@fastmail.com
+ *
+ * */
+
+"use strict";
 
 const assert = require('assert');
 const fs = require("fs"); // file system access
 const path = require("path");
+const args = require('minimist')(process.argv.slice(2)); // handle command line arguments
 const winston = require('winston'); // logging
-const { spawnSync, execFile } = require('child_process');
-const togeojson = require('togeojson');
+const { spawnSync, execFile } = require('child_process'); // spawning processes
+const togeojson = require('togeojson');        // convert kml to geojson
 const DOMParser = require('xmldom').DOMParser; // for togeojson
 const geojsonFlatten = require('geojson-flatten'); // handle geojsons
 const geojsonArea = require('geojson-area');
@@ -18,10 +23,10 @@ const geojsonMerge = require('geojson-merge');
 const turfErase = require('turf-erase');
 const turfInside = require('turf-inside');
 const turfPoint = require('turf-point');
-const api = require('./api.js');
 
 // read config from config.js ('.js' allows comments)
-const config = require("./config.js");
+const config = require(args.c || "./config.js");
+
 // config sanity checks
 assert(typeof config.server.maxParallelUpdates == "number",
     "Configuration error: maxParallelUpdates must be a number.");
@@ -29,24 +34,29 @@ assert(typeof config.server.geofabrikMetaDir == 'string',
     "Configuration error: geofabrikMetaDir must be a number.");
 assert(typeof config.server.geofabrikMetaUpdateInterval == 'number',
     "Configuration error: geofabrikMetaUpdateInterval must be a string");
-assert(typeof config.server.workerUpdateInterval == 'number' &
+assert(typeof config.server.workerUpdateInterval == 'number' &&
     config.server.workerUpdateInterval > 0,
     "Configuration error: workerUpdateInterval must be a positive number");
-assert(typeof config.server.dataAgeThreshold == 'number' &
+assert(typeof config.server.dataAgeThreshold == 'number' &&
     config.server.dataAgeThreshold > 0,
     "Configuration error: dataAgeThreshold must be a positive number");
-assert((typeof config.loglevel == "number" &
-    config.loglevel >= 0 & config.loglevel < 8) |
-    typeof config.loglevel == "string" &
+assert((typeof config.loglevel == "number" &&
+    config.loglevel >= 0 && config.loglevel < 8) ||
+    typeof config.loglevel == "string" &&
     ["emerg", "alert", "crit", "error",
         "warning", "notice", "info", "debug"].includes(config.loglevel),
     "Configuration error: loglevel must be either number (0-7) or " +
     "a syslog level string");
+
+// start api
+const api = require('./api.js')(config);
+
 // configure logging
 const log = new (winston.Logger)({
     level: config.loglevel,
     transports: [
         new winston.transports.Console({
+            stderrLevels: ['error'],
             prettyPrint: (object) => JSON.stringify(object),
             colorize: true,
             timestamp: () => (new Date()).toISOString()
@@ -74,8 +84,8 @@ function Controller() {
 }
 
 Controller.prototype.updateGeofabrikMetadata = function() {
-    /* update geofabrik metadata and get extract bounds 
-     * Includes code by Martin Raifer: 
+    /* update geofabrik metadata and get extract bounds
+     * Includes code by Martin Raifer:
      * https://github.com/BikeCitizens/geofabrik-extracts */
 
     log.info('Updating Geofabrik Metadata...');
@@ -133,7 +143,7 @@ Controller.prototype.updateGeofabrikMetadata = function() {
 };
 
 Controller.prototype.updateWorkers = function() {
-    /* loops through list of tasks in db and 
+    /* loops through list of tasks in db and
      * starts/terminates workers accordingly */
 
     let oldWorkerIDs = this.workers.map(worker => worker.task.id);
@@ -148,7 +158,7 @@ Controller.prototype.updateWorkers = function() {
             if(worker.task.expirationDate) {
                 let expires = new Date(worker.task.expirationDate);
                 if(expires < Date.now()) {
-                    log.info(`Task ${worker.task.id} expired. Deleting task and worker.`);
+                    log.info(`Task ${worker.task.id} expired. Deleting task from db.`);
                     // delete from database
                     let SQLdelete = this.api.db.prepare("DELETE FROM tasks WHERE id = ?;",
                         worker.task.id);
@@ -215,7 +225,7 @@ Worker.prototype.findExtract = function(given, extractsGeoJSON) {
 };
 
 Worker.prototype.clipExtract = function(task, callback) {
-    /* clips task data file at task.URL to task.coverage 
+    /* clips task data file at task.URL to task.coverage
      * using osmconvert */
 
     // convert coverage GeoJSON to Polygon Filter File Format:
@@ -223,7 +233,7 @@ Worker.prototype.clipExtract = function(task, callback) {
 
     log.debug("Clipping data to coverage for task", this.task.id);
     // Generate poly string
-    // check if task.coverage.properties exists 
+    // check if task.coverage.properties exists
     let header = this.task.coverage.properties !== null ?
         this.task.coverage.properties.name || "undefined" : "undefined";
     let polygons = [];
@@ -247,11 +257,14 @@ Worker.prototype.clipExtract = function(task, callback) {
     this.clipProcess = execFile('osmconvert', [this.task.URL, "-B=" + polypath,
         "-o=" + clippedpath], {maxBuffer: 1024 * 500}, function (error, stdout, stderr) {
         if (error) {
+            if(error.killed === true) {
+                log.warning(`clipping process for task ${this.task.id} killed`);
+                return;
+            }
             log.error(
-                "[clipExtract] Error clipping data to coverage for task",
+                "Error clipping data to coverage for task",
                 this.task.id, "error:", error, "stderr:", stderr, "stdout:", stdout
             );
-            throw "Error clipping file.";
         }
 
         // replace original file with clipped file
@@ -284,19 +297,15 @@ Worker.prototype.clipExtract = function(task, callback) {
 Worker.prototype.createInitialDatafile = function() {
     /* downloads initial data file in .pbf-format */
     if(!this.controller.geofabrikMetadata) {
-        log.warning(
-            "Can't create initial data file for task", this.task.id,
-            "- no Geofabrik metadata."
-        );
+        log.warning("Can't create initial data file for task", this.task.id,
+                    "- no Geofabrik metadata.");
         return;
     }
     let geofabrikName = this.findExtract(this.task.coverage,
                                          this.controller.geofabrikMetadata);
     if(geofabrikName === undefined) {
-        log.warning(
-            "Can't create initial data file for task", this.task.id,
-            "- no Geofabrik extract found. Terminating worker."
-        );
+        log.warning("Can't create initial data file for task", this.task.id,
+                    "- no Geofabrik extract found. Terminating worker.");
         this.terminate();
         return;
     }
@@ -318,8 +327,10 @@ Worker.prototype.createInitialDatafile = function() {
         this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
         function (error, stdout, stderr) {
             if (error) {
-                log.error("Wget error:", error, "Stdout:", stdout,
-                    "Stderr:", stderr);
+                if(error.killed === true) return;
+                log.error(`wget error: ${error}\nstdout: ${stdout}\n`,
+                          `stderr: ${stderr}\n`,
+                          `processinfo:`, this.wgetInitialFileProcess);
                 return;
             }
             if (stderr.match("saved")) {
@@ -350,9 +361,7 @@ Worker.prototype.updateTask = function() {
         return;
     }
     if(this.wgetInitialFileProcess !== undefined) {
-        log.info(
-            `Abort update, initial download for task ${this.task.id} running.`
-        );
+        log.info(`Abort update, initial download for task ${this.task.id} running.`);
         return;
     }
     let nParallelUpdates = this.controller.workers.filter(worker =>
@@ -421,7 +430,9 @@ Worker.prototype.updateTask = function() {
         this.task.URL, newfile], {maxBuffer: 1024 * 500},
         function (error, stdout, stderr) {
             if (error) {
-                if(error.toString().match("Your OSM file is already up-to-date.")) {
+                if(error.killed === true) {
+                    log.warning(`osmupdate process for task ${this.task.id} killed`);
+                } else if(error.toString().match("Your OSM file is already up-to-date.")) {
                     log.info(`Task ${this.task.id} already up-to-date.`);
                 } else log.error(`Error updating task. error: ${error}`);
             } else {
@@ -433,18 +444,10 @@ Worker.prototype.updateTask = function() {
                                      `mv stderr:\n ${mv.stderr}`);
                     } else {
                         // clip new file and finish task update (insert timings)
-                        try{
-                            this.clipExtract(this.task, finishTaskUpdate.bind(this));
-                        }
-                        catch(err) {
-                            log.error(
-                                "[updateTask] Error clipping updated file for task",
-                                this.task.id
-                            );
-                            return;
-                        }
+                        this.clipExtract(this.task, finishTaskUpdate.bind(this));
                     }
-                }
+                } else log.warning(`Unexpected osmupdate output. stdout: ${stdout}.`,
+                    `stderr: ${stderr}`);
             }
             delete this.updateProcess;
         }.bind(this));
