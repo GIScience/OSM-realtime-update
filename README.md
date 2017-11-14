@@ -31,7 +31,7 @@ Use the Dockerfile provided.
 
 1. `docker build -t realtimeosm .`
 
-2. `docker run -p 1234:1234 -d realtimeosm`
+2. `docker run -v /path/to/data:/OSM-realtime-update/server/data -p 1234:1234 -d realtimeosm` (NOTE: data folder must not be existent, will be created by container)
 
 
 ### Config file
