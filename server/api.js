@@ -150,12 +150,13 @@ function api(customconfig) {
         let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ?", req.params.name);
         log.debug("GET tasks; SQL statement to be run:", SQLselect,
             "\nParameter:", req.params.name);
-        SQLselect.all(function (err, rows) {
-            if(err) {
-                log.error("SQL error:", err);
-                res.status(500).send("Error retrieving tasks from the database.");
-            }
-            res.json(rows);
+        SQLselect.all(function (err, tasks) {
+            if(err) res.status(500).send("Error retrieving tasks from the database.");
+            tasks.map(obj => {
+                obj.coverage = JSON.parse(obj.coverage);
+                return obj;
+            });
+            res.json(tasks);
         });
     });
 
@@ -165,12 +166,13 @@ function api(customconfig) {
         let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE id == ?", req.params.id);
         log.debug("GET tasks; SQL statement to be run:", SQLselect,
             "\nParameter:", req.params.id);
-        SQLselect.all(function (err, rows) {
-            if(err) {
-                log.error("SQL error:", err);
-                res.status(500).send("Error retrieving tasks from the database.");
-            }
-            res.json(rows);
+        SQLselect.all(function (err, tasks) {
+            if(err) res.status(500).send("Error retrieving tasks from the database.");
+            tasks.map(obj => {
+                obj.coverage = JSON.parse(obj.coverage);
+                return obj;
+            });
+            res.json(tasks);
         });
     });
 
