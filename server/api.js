@@ -167,7 +167,7 @@ function api(customconfig) {
         log.debug("GET tasks; SQL statement to be run:", SQLselect,
             "\nParameter:", req.params.id);
         SQLselect.all(function (err, tasks) {
-            if(err) res.status(500).send("Error retrieving tasks from the database.");
+            if(err) res.status(500).send("Error retrieving task from the database.");
             tasks.map(obj => {
                 obj.coverage = JSON.parse(obj.coverage);
                 return obj;
@@ -290,8 +290,6 @@ function api(customconfig) {
                 let id;
                 let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ? AND " +
                     "coverage == ?", name, JSON.stringify(coverage));
-                //log.debug("POST task; SQL for id select;", SQLselect,
-                //    "\nParameters:", name, coverage);
                 SQLselect.all(function updateURL(err, rows) {
                     if(err) {
                         log.error("SQL error:", err);
@@ -300,8 +298,9 @@ function api(customconfig) {
                         return;
                     }
                     log.debug("GET id for generating url. Result:", rows);
-                    if(rows) id = rows[0].id;
-                    else {
+                    if(rows && rows.length === 1) {
+                        id = rows[0].id;
+                    } else {
                         res.status(500).send("POST task; Error retrieving id " +
                             "from database after insertion. Can't generate URL.");
                         return;

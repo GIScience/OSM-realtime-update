@@ -117,7 +117,7 @@ let testfun = {
                 response = JSON.parse(curl.toString());
             } catch (err) {
                 throw Error("Parsing API response:\n\n" + err +
-                    "\n\nResponse: " + curl.toString());
+                    "\n\nResponse: " + curl.toString() + "\n");
             }
             // save id for future tests
             let i = testtasks.findIndex((item) => item.name === response.name);

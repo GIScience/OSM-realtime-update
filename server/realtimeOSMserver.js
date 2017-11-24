@@ -183,6 +183,7 @@ Controller.prototype.updateWorkers = function() {
         for(let i in tasks) {
             if(workerTaskIDs.indexOf(tasks[i].id) == -1) {
                 log.info("Adding worker for task", tasks[i].id);
+                tasks[i].coverage = JSON.parse(tasks[i].coverage);
                 this.workers.push(new Worker(this, tasks[i]));
             }
         }
@@ -197,8 +198,12 @@ function Worker(controller, task) {
     /* keeps the OSM data for a task up to date */
     this.controller = controller;
     this.task = task;
-    this.task.coverage = JSON.parse(this.task.coverage);
-
+    if (task.URL == null || task.URL == "") {
+        log.error(`URL of task ${this.task.id} must not be empty, terminating worker.`,
+                  `Please remove task from database.`);
+        this.terminate();
+        return;
+    }
     this.updateTask();
     this.updateIntervalID = setInterval(this.updateTask.bind(this),
                                         this.task.updateInterval * 1000);
@@ -425,6 +430,10 @@ Worker.prototype.updateTask = function() {
         log.notice("Successfully updated task", this.task.id);
     };
     // start update
+    //
+    // idea to reduce traffic and processing time: keep a general temp-directory for
+    // osmupdate that gets cleaned daily/weekly...
+    //
     this.updateProcess = execFile('osmupdate',
         ["-v", "--max-merge=2", `-t=osmupdate_temp/Task${this.task.id}`,
         this.task.URL, newfile], {maxBuffer: 1024 * 500},
