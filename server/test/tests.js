@@ -9,7 +9,7 @@ const child = require('child_process');
 const assert = require('assert');
 
 let testtasks = [
-    // missing tasks: Duplicate names
+    // missing tasks: task with bad content -> error parsing
     {
         name: 'HeidelbergTest',
         comment: 'Task with only geometry as coverage',
@@ -24,6 +24,13 @@ let testtasks = [
         },
         expirationDate: '',
         updateInterval: 10,
+    },
+    {
+        name: 'TogoTest',
+        comment: 'Task with geofabrikRegion string',
+        coverage: 'togo',
+        expirationDate: '',
+        updateInterval: 15,
     },
     {
         name: 'ManchesterTest',

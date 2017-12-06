@@ -11,6 +11,82 @@ const WKT = require('wellknown'); // WKT parsing
 const geojsonhint = require('geojsonhint'); // validate GeoJSONs
 const geojsonrewind = require('geojson-rewind'); // fix right-hand rule for GeoJSONs
 
+const geofabrikRegions = ["africa", "antarctica", "asia", "australia-oceania",
+    "central-america", "europe", "north-america", "russia", "south-america",
+    "algeria", "angola", "benin", "botswana", "burkina-faso", "burundi",
+    "cameroon", "canary-islands", "cape-verde", "central-african-republic", "chad",
+    "comores", "congo-brazzaville", "congo-democratic-republic", "djibouti",
+    "egypt", "equatorial-guinea", "eritrea", "ethiopia", "gabon", "ghana",
+    "guinea-bissau", "guinea", "ivory-coast", "kenya", "lesotho", "liberia",
+    "libya", "madagascar", "malawi", "mali", "mauritania", "mauritius", "morocco",
+    "mozambique", "namibia", "nigeria", "niger", "rwanda",
+    "saint-helena-ascension-and-tristan-da-cunha", "sao-tome-and-principe",
+    "senegal-and-gambia", "seychelles", "sierra-leone", "somalia",
+    "south-africa-and-lesotho", "south-africa", "south-sudan", "sudan",
+    "swaziland", "tanzania", "togo", "tunisia", "uganda", "zambia", "zimbabwe",
+    "afghanistan", "azerbaijan", "bangladesh", "bhutan", "cambodia", "china",
+    "gcc-states", "india", "indonesia", "iran", "iraq", "israel-and-palestine",
+    "japan", "jordan", "kazakhstan", "kyrgyzstan", "lebanon",
+    "malaysia-singapore-brunei", "maldives", "mongolia", "myanmar", "nepal",
+    "north-korea", "pakistan", "philippines", "russia-asian-part", "south-korea",
+    "sri-lanka", "syria", "taiwan", "tajikistan", "thailand", "turkmenistan",
+    "uzbekistan", "vietnam", "yemen", "chubu", "chugoku", "hokkaido", "kansai",
+    "kanto", "kyushu", "shikoku", "tohoku", "australia", "fiji", "new-caledonia",
+    "new-zealand", "papua-new-guinea", "belize", "cuba", "guatemala",
+    "haiti-and-domrep", "nicaragua", "albania", "alps", "andorra", "austria",
+    "azores", "belarus", "belgium", "bosnia-herzegovina", "british-isles",
+    "bulgaria", "croatia", "cyprus", "czech-republic", "dach", "denmark",
+    "estonia", "faroe-islands", "finland", "france", "georgia", "germany",
+    "great-britain", "greece", "hungary", "iceland",
+    "ireland-and-northern-ireland", "isle-of-man", "italy", "kosovo", "latvia",
+    "liechtenstein", "lithuania", "luxembourg", "macedonia", "malta", "moldova",
+    "monaco", "montenegro", "netherlands", "norway", "poland", "portugal",
+    "romania", "russia-european-part", "serbia", "slovakia", "slovenia", "spain",
+    "sweden", "switzerland", "turkey", "ukraine", "alsace", "aquitaine",
+    "auvergne", "basse-normandie", "bourgogne", "bretagne", "centre",
+    "champagne-ardenne", "corse", "franche-comte", "guadeloupe", "guyane",
+    "haute-normandie", "ile-de-france", "languedoc-roussillon", "limousin",
+    "lorraine", "martinique", "mayotte", "midi-pyrenees", "nord-pas-de-calais",
+    "pays-de-la-loire", "picardie", "poitou-charentes",
+    "provence-alpes-cote-d-azur", "reunion", "rhone-alpes", "baden-wuerttemberg",
+    "bayern", "berlin", "brandenburg", "bremen", "hamburg", "hessen",
+    "mecklenburg-vorpommern", "niedersachsen", "nordrhein-westfalen",
+    "rheinland-pfalz", "saarland", "sachsen-anhalt", "sachsen",
+    "schleswig-holstein", "thueringen", "freiburg-regbez", "karlsruhe-regbez",
+    "stuttgart-regbez", "tuebingen-regbez", "mittelfranken", "niederbayern",
+    "oberbayern", "oberfranken", "oberpfalz", "schwaben", "unterfranken",
+    "arnsberg-regbez", "detmold-regbez", "duesseldorf-regbez", "koeln-regbez",
+    "muenster-regbez", "england", "scotland", "wales", "berkshire",
+    "buckinghamshire", "cambridgeshire", "cheshire", "cornwall", "cumbria",
+    "derbyshire", "devon", "dorset", "east-sussex", "east-yorkshire-with-hull",
+    "essex", "gloucestershire", "greater-london", "greater-manchester",
+    "hampshire", "herefordshire", "hertfordshire", "isle-of-wight", "kent",
+    "lancashire", "leicestershire", "norfolk", "northumberland", "north-yorkshire",
+    "nottinghamshire", "oxfordshire", "shropshire", "somerset", "south-yorkshire",
+    "staffordshire", "suffolk", "surrey", "west-midlands", "west-sussex",
+    "west-yorkshire", "wiltshire", "worcestershire", "enfield", "centro", "isole",
+    "nord-est", "nord-ovest", "sud", "dolnoslaskie", "kujawsko-pomorskie",
+    "lodzkie", "lubelskie", "lubuskie", "malopolskie", "mazowieckie", "opolskie",
+    "podkarpackie", "podlaskie", "pomorskie", "slaskie", "swietokrzyskie",
+    "warminsko-mazurskie", "wielkopolskie", "zachodniopomorskie", "canada",
+    "greenland", "mexico", "us-midwest", "us-northeast", "us-pacific", "us-south",
+    "us-west", "alberta", "british-columbia", "manitoba", "new-brunswick",
+    "newfoundland-and-labrador", "northwest-territories", "nova-scotia", "nunavut",
+    "ontario", "prince-edward-island", "quebec", "saskatchewan", "yukon",
+    "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+    "connecticut", "delaware", "district-of-columbia", "florida", "georgia",
+    "hawaii", "idaho", "illinois", "indiana", "iowa", "kansas", "kentucky",
+    "louisiana", "maine", "maryland", "massachusetts", "michigan", "minnesota",
+    "mississippi", "missouri", "montana", "nebraska", "nevada", "new-hampshire",
+    "new-jersey", "new-mexico", "new-york", "north-carolina", "north-dakota",
+    "ohio", "oklahoma", "oregon", "pennsylvania", "puerto-rico", "rhode-island",
+    "south-carolina", "south-dakota", "tennessee", "texas", "utah", "vermont",
+    "virginia", "washington", "west-virginia", "wisconsin", "wyoming",
+    "central-fed-district", "crimean-fed-district", "far-eastern-fed-district",
+    "kaliningrad", "north-caucasus-fed-district", "northwestern-fed-district",
+    "siberian-fed-district", "south-fed-district", "ural-fed-district",
+    "volga-fed-district", "argentina", "bolivia", "brazil", "chile", "colombia",
+    "ecuador", "paraguay", "peru", "suriname", "uruguay"];
 
 function api(customconfig) {
     const api = express();
@@ -88,7 +164,8 @@ function api(customconfig) {
     const dbname = config.api.taskdb;
     api.db = new sqlite3.Database(dbname);
     api.db.serialize(function() {
-        api.db.run("CREATE TABLE if not exists tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+        api.db.run("CREATE TABLE if not exists tasks (" +
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
             "name TEXT NOT NULL, " +
             "coverage BLOB NOT NULL, " +
             "URL TEXT, " +
@@ -167,7 +244,8 @@ function api(customconfig) {
         log.debug("GET tasks; SQL statement to be run:", SQLselect,
             "\nParameter:", req.params.id);
         SQLselect.all(function (err, tasks) {
-            if(err) res.status(500).send("Error retrieving task from the database.");
+            if(err) res.status(500).send("Error retrieving task from the database." +
+                                         err);
             tasks.map(obj => {
                 obj.coverage = JSON.parse(obj.coverage);
                 return obj;
@@ -210,48 +288,62 @@ function api(customconfig) {
             //ignore error if string is not JSON
         }
         if (typeof(coverage) != "object") {
-            try {
-                coverage = WKT.parse(coverage);
-                if(coverage === null) {
-                    throw new Error("WKT string could not be parsed.");
+            // check if coverage is Geofabrik region string
+            if (geofabrikRegions.includes(coverage)) {
+                coverage = {"geofabrikRegion": coverage};
+            } else {
+                // parse wkt string
+                try {
+                    let wktcoverage = WKT.parse(coverage);
+                    if (wktcoverage === null) {
+                        throw new Error("Can't parse coverage string as WKT or " +
+                                        "Geofabrik region code.");
+                    } else if(wktcoverage.coordinates.reduce((result, subpoly) =>
+                        subpoly.length + result, 0) > 10000) {
+                        throw new Error("Polygon has more that 10000 nodes.");
+                    } else {
+                        coverage = wktcoverage;
+                    }
+                } catch (e) {
+                    log.error("Error parsing string while adding task. Coverage:\n",
+                        req.body.coverage, "\n", e);
+                    errorlist.push("coverage [GeoJSON / WKT string / Geofabrik regioncode]:" +
+                                   e);
                 }
-                if(coverage.coordinates.reduce((result, subpoly) =>
-                    subpoly.length + result, 0) > 10000) {
-                    throw new Error("Polygon has more that 10000 nodes.");
-                }
-            } catch (e) {
-                log.error("Error parsing WKT string while adding task. Coverage:\n",
-                    req.body.coverage, "\n", e);
-                errorlist.push("coverage [WKT string]");
             }
         } else {
+            // treat as GeoJSON
+            //
             // dismiss GeoJSON 'properties' in order to be able to compare GeoJSON
             // coverages with WKT coverages in database and check for 'unique' constraint
             coverage.properties = null;
         }
         if(errorlist.length === 0) {
-            let hint = geojsonhint.hint(coverage);
-            if(hint.some(element => element.message.match("right-hand rule"))) {
-                coverage = geojsonrewind(coverage);
-                hint = geojsonhint.hint(coverage);
-            }
-            hint = hint.filter(element => {
-                if(element.message.match('old-style crs member')) {
-                    return false;
+            // check if geojson was correctly parsed
+            if (!coverage.hasOwnProperty("geofabrikRegion")) {
+                let hint = geojsonhint.hint(coverage);
+                if(hint.some(element => element.message.match("right-hand rule"))) {
+                    coverage = geojsonrewind(coverage);
+                    hint = geojsonhint.hint(coverage);
                 }
-                return true;
-            });
-            if (hint.length > 0) {
-                errorlist.push("coverage: invalid polygon",
-                    JSON.stringify(hint));
-            }
-            // check whether coverage is geometry
-            if(coverage.type == 'Polygon') {
-                // generate feature
-                coverage = {type: "Feature", geometry: coverage, properties: null};
-            }
-            if(!coverage.hasOwnProperty("geometry")) {
-                errorlist.push("coverage: submitted feature does not have geometry property");
+                hint = hint.filter(element => {
+                    if(element.message.match('old-style crs member')) {
+                        return false;
+                    }
+                    return true;
+                });
+                if (hint.length > 0) {
+                    errorlist.push("coverage: invalid polygon",
+                        JSON.stringify(hint));
+                }
+                // check whether coverage is geometry
+                if(coverage.type == 'Polygon') {
+                    // generate feature
+                    coverage = {type: "Feature", geometry: coverage, properties: null};
+                }
+                if(!coverage.hasOwnProperty("geometry")) {
+                    errorlist.push("coverage: submitted feature does not have geometry property");
+                }
             }
             if (expirationDate) {
                 if (isNaN(Date.parse(expirationDate))) {
@@ -319,6 +411,7 @@ function api(customconfig) {
                         }
                         // update URL in local variable
                         rows[0].URL = url;
+                        rows[0].coverage = JSON.parse(rows[0].coverage);
                         res.json(rows[0]);
                     });
                 });

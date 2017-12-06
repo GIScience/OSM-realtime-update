@@ -204,21 +204,54 @@ function Worker(controller, task) {
         this.terminate();
         return;
     }
+    // find matching geofabrik extract
+    let metadataMatch = this.findExtract(this.task.coverage,
+                                         this.controller.geofabrikMetadata);
+    if(metadataMatch === undefined) {
+        log.warning("Can't create initial data file for task", this.task.id,
+                    "- no Geofabrik extract found. Terminating worker.");
+        this.terminate();
+        return;
+    }
+
+    // update coverage if geofabrikRegion-string was given
+    if (task.coverage.hasOwnProperty("geofabrikRegion")) {
+        // save metadata coverage
+        this.task.coverage = {
+            type: "Feature",
+            geometry: metadataMatch.geometry,
+            properties: {name: task.coverage.geofabrikRegion}
+        };
+        // update coverage in database
+        let updateCoverageSQL = this.controller.api.db.prepare(
+            `UPDATE tasks
+             SET coverage = ?
+             WHERE id = ?`, JSON.stringify(this.task.coverage), this.task.id);
+        updateCoverageSQL.run(function (err) {
+            if(err) log.error("[updateCoverage] SQL error:", err);
+        });
+    }
+    // update geofabrikRegion name
+    this.task.geofabrikRegion = metadataMatch.properties.geofabrikRegion;
+
     this.updateTask();
     this.updateIntervalID = setInterval(this.updateTask.bind(this),
                                         this.task.updateInterval * 1000);
 }
 
-Worker.prototype.findExtract = function(given, extractsGeoJSON) {
-    /* find smallest area extract that fully includes the given polygon */
+Worker.prototype.findExtract = function(givenPoly, extractsGeoJSON) {
+    /* find smallest area extract that fully includes the given polygon
+     * or matches a given region name */
     let matches = extractsGeoJSON.features.filter(function(extract) {
-        if (!turfInside(turfPoint(given.geometry.coordinates[0][0]), extract))
-            return false;
-        // deep-clone `given` object, see: https://github.com/Turfjs/turf-erase/issues/5
-        let erased = turfErase(JSON.parse(JSON.stringify(given)), extract);
-        if (erased === undefined)
+        // does not find extract if coverage boundaries match extract boundaries
+        // -> solve by addig extra difference === null check if necessary
+        if (givenPoly.hasOwnProperty('geofabrikRegion')) {
+            let regex = RegExp("\\/"+givenPoly.geofabrikRegion+"$");
+            return extract.properties.geofabrikRegion.match(regex) ?
+                true : false;
+        } else if (turfBooleanWithin(givenPoly, extract)) {
             return true;
-        return false;
+        } else return false;
     });
     if (matches.length === 0) {
         return undefined;
@@ -226,7 +259,7 @@ Worker.prototype.findExtract = function(given, extractsGeoJSON) {
     let result = matches.reduce(function(prev, current) {
         return current.properties.area < prev.properties.area ? current : prev;
     });
-    return result.properties.geofabrikName;
+    return result;
 };
 
 Worker.prototype.clipExtract = function(task, callback) {
@@ -239,7 +272,7 @@ Worker.prototype.clipExtract = function(task, callback) {
     log.debug("Clipping data to coverage for task", this.task.id);
     // Generate poly string
     // check if task.coverage.properties exists
-    let header = this.task.coverage.properties !== null ?
+    let header = this.task.coverage.properties != null ?
         this.task.coverage.properties.name || "undefined" : "undefined";
     let polygons = [];
     for(let i = 0; i < this.task.coverage.geometry.coordinates.length; i++) {
@@ -306,14 +339,7 @@ Worker.prototype.createInitialDatafile = function() {
                     "- no Geofabrik metadata.");
         return;
     }
-    let geofabrikName = this.findExtract(this.task.coverage,
-                                         this.controller.geofabrikMetadata);
-    if(geofabrikName === undefined) {
-        log.warning("Can't create initial data file for task", this.task.id,
-                    "- no Geofabrik extract found. Terminating worker.");
-        this.terminate();
-        return;
-    }
+    let geofabrikRegion = this.task.geofabrikRegion;
     const mkdir = spawnSync('mkdir', ['-p', path.dirname(this.task.URL)]);
     if(mkdir.stderr.toString() !== '') {
         log.error(
@@ -321,9 +347,9 @@ Worker.prototype.createInitialDatafile = function() {
         );
     }
     let geofabrikBase = 'http://download.geofabrik.de/';
-    let suffixIdx = geofabrikName.match(this.controller.geofabrikMetaDir).index;
-    let suffix = geofabrikName.substr(suffixIdx + this.controller.geofabrikMetaDir.length,
-                                      geofabrikName.length) + "-latest.osm.pbf";
+    let suffixIdx = geofabrikRegion.match(this.controller.geofabrikMetaDir).index;
+    let suffix = geofabrikRegion.substr(suffixIdx + this.controller.geofabrikMetaDir.length,
+                                      geofabrikRegion.length) + "-latest.osm.pbf";
     log.info(
         "Downloading", geofabrikBase + suffix,
         "for task", this.task.id
