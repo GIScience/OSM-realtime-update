@@ -64,7 +64,7 @@ Individual resource: `/tasks/:id`
 * Request Parameters:
 
 	- *name:* character string [a-zA-Z]
-	- *coverage:* a polygon in WKT-format or JSON
+	- *coverage:* a polygon in WKT / GeoJSON format or a Geofabrik region string (eg. 'togo')
 		- maximum nodes: 10000
 	- *expirationDate (optional):* timestamp in ISO 8601 format [YYYY-MM-DDTHH:MM:SS+HH:MM]
     - *updateInterval (optional):* time in seconds
@@ -91,6 +91,9 @@ Individual resource: `/tasks/:id`
       
 `curl --data 'name=test_region&coverage={"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[-0.61,53.05],[-3.04,52.20],[-0.22,51.92],[-0.61,53.05]]]}, "properties": {"name": "GB"}}&expirationDate=2020-05-01' http://localhost:1234/api/tasks`
 
+* Example Geofabrik region string/x-www-form-unencoded:
+
+`curl --data 'name=Togo&coverage=togo&updateInterval=10' http://localhost:1234/api/tasks`
 
 
 #### Delete task
