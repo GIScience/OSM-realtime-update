@@ -17,12 +17,9 @@ const winston = require('winston'); // logging
 const { spawnSync, execFile } = require('child_process'); // spawning processes
 const togeojson = require('togeojson');        // convert kml to geojson
 const DOMParser = require('xmldom').DOMParser; // for togeojson
-const geojsonFlatten = require('geojson-flatten'); // handle geojsons
-const geojsonArea = require('geojson-area');
-const geojsonMerge = require('geojson-merge');
-const turfErase = require('turf-erase');
-const turfInside = require('turf-inside');
-const turfPoint = require('turf-point');
+const turfFlatten = require('@turf/flatten'); // handle geojsons
+const turfArea = require('@turf/area');
+const turfBooleanWithin = require('@turf/boolean-within');
 
 // read config from config.js ('.js' allows comments)
 const config = require(args.c || "./config.js");
@@ -130,15 +127,18 @@ Controller.prototype.updateGeofabrikMetadata = function() {
     for(let i in boundaryFileList) {
         let file = boundaryFileList[i];
         let kml = new DOMParser().parseFromString(fs.readFileSync(file, 'utf8'));
-        let gj = geojsonFlatten(togeojson.kml(kml));
+        let gj = turfFlatten(togeojson.kml(kml));
         gj.features.map(feature => {
-            feature.properties.geofabrikName = file.substr(0, file.length - 4).substr(5);
-            feature.properties.area = geojsonArea.geometry(feature.geometry);
+            feature.properties.geofabrikRegion = file.substr(0, file.length - 4).substr(5);
+            feature.properties.area = turfArea(feature.geometry);
         });
-        geojsonBoundaries.push(gj);
+        geojsonBoundaries = geojsonBoundaries.concat(gj.features);
     }
 
-    this.geofabrikMetadata = geojsonMerge(geojsonBoundaries);
+    this.geofabrikMetadata = {
+        "type": "FeatureCollection",
+        "features": geojsonBoundaries
+    };
     log.notice("Successfully updated metadata.");
 };
 
