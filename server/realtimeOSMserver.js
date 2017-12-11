@@ -262,6 +262,28 @@ Worker.prototype.findExtract = function(givenPoly, extractsGeoJSON) {
     return result;
 };
 
+Worker.prototype.createPolyFile = function(task) {
+    // Generate poly string
+    // check if task.coverage.properties exists
+    let header = task.coverage.properties != null ?
+        task.coverage.properties.name || "undefined" : "undefined";
+    let polygons = [];
+    for(let i = 0; i < task.coverage.geometry.coordinates.length; i++) {
+        let idx = i + 1;
+        idx = (idx == 1 ? idx : -idx);
+        let coords = task.coverage.geometry.coordinates[i].map(pair =>
+                                                                    pair.join("\t"));
+        coords = coords.join("\n\t");
+        polygons[i] = `${idx}\n\t${coords}\nEND`;
+    }
+    let poly = [header, polygons.join("\n"), "END"].join("\n");
+
+    // save poly-string to file
+    const polypath = "task" + task.id + ".poly";
+    fs.writeFileSync(polypath, poly);
+    return polypath;
+};
+
 Worker.prototype.clipExtract = function(task, callback) {
     /* clips task data file at task.URL to task.coverage
      * using osmconvert */
@@ -270,25 +292,8 @@ Worker.prototype.clipExtract = function(task, callback) {
     // https://wiki.openstreetmap.org/wiki/Osmosis/Polygon_Filter_File_Format
 
     log.debug("Clipping data to coverage for task", this.task.id);
-    // Generate poly string
-    // check if task.coverage.properties exists
-    let header = this.task.coverage.properties != null ?
-        this.task.coverage.properties.name || "undefined" : "undefined";
-    let polygons = [];
-    for(let i = 0; i < this.task.coverage.geometry.coordinates.length; i++) {
-        let idx = i + 1;
-        idx = (idx == 1 ? idx : -idx);
-        let coords = this.task.coverage.geometry.coordinates[i].map(pair =>
-                                                                    pair.join("\t"));
-        coords = coords.join("\n\t");
-        polygons[i] = `${idx}\n\t${coords}\nEND`;
-    }
-    let poly = [header, polygons.join("\n"), "END"].join("\n");
 
-    // save poly-string to file
-    const polypath = "task" + this.task.id + ".poly";
-    fs.writeFileSync(polypath, poly);
-
+    let polypath = this.createPolyFile(this.task);
     // clip extract
     const clippedpath = path.join(path.dirname(this.task.URL),
                           "clipped_" + path.basename(this.task.URL));
@@ -455,6 +460,9 @@ Worker.prototype.updateTask = function() {
         });
         log.notice("Successfully updated task", this.task.id);
     };
+    // create poly file for clipping
+    let polyFile = this.createPolyFile(this.task);
+
     // start update
     //
     // idea to reduce traffic and processing time: keep a general temp-directory for
@@ -462,7 +470,7 @@ Worker.prototype.updateTask = function() {
     //
     this.updateProcess = execFile('osmupdate',
         ["-v", "--max-merge=2", `-t=osmupdate_temp/Task${this.task.id}`,
-        this.task.URL, newfile], {maxBuffer: 1024 * 500},
+        "-B=" + polyFile, this.task.URL, newfile], {maxBuffer: 1024 * 500},
         function (error, stdout, stderr) {
             if (error) {
                 if(error.killed === true) {
@@ -478,13 +486,23 @@ Worker.prototype.updateTask = function() {
                         log.error(`[updateTask] Error moving new file to old file.`,
                                      `mv stderr:\n ${mv.stderr}`);
                     } else {
-                        // clip new file and finish task update (insert timings)
-                        this.clipExtract(this.task, finishTaskUpdate.bind(this));
+                        // finish task update (insert timings)
+                        finishTaskUpdate.bind(this)();
                     }
                 } else log.warning(`Unexpected osmupdate output. stdout: ${stdout}.`,
                     `stderr: ${stderr}`);
             }
             delete this.updateProcess;
+
+            // remove poly-file
+            const rm = spawnSync('rm', [polyFile]);
+            if(rm.stderr.toString() !== '') {
+                log.error(
+                    "[clipExtract] Error removing poly-file for task",
+                    this.task.id, `rm stderr:\n ${rm.stderr}`
+                );
+                throw "Error removing poly-file for task.";
+            }
         }.bind(this));
 };
 
