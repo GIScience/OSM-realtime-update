@@ -199,11 +199,13 @@ function handleDeleteButtonClick() {
 function handleTableSelect( e, dt, type, indexes) {
     // abort if item has already been selected in map
     if(selectInteraction.getFeatures().getLength() > 0) return;
-    // otherwise add item to map
+    // otherwise add item to map selection
     var feature = dt.rows( indexes ).data()[0];
     var coordinates = feature.getGeometry().getInteriorPoint().getCoordinates();
     tasksLayer.selectedFeature = feature;
     selectInteraction.getFeatures().push(feature);
+    // zoom to feature
+    map.getView().fit(feature.getGeometry(), {duration: 1000, padding: [250, 250, 250, 250]});
     document.getElementById('deleteButton').removeAttribute("disabled");
     createPopup(coordinates, featureToPopupContent(feature));
 }
