@@ -16,9 +16,9 @@
     "author": "Stefan Eberlein",
     "license": "MIT",
     "dependencies": {
-        "@turf/area": "^5.0.4",
-        "@turf/boolean-within": "^5.0.4",
-        "@turf/flatten": "^5.0.4",
+        "@turf/area": "^5.1.5",
+        "@turf/boolean-within": "^5.1.5",
+        "@turf/flatten": "^5.1.5",
         "body-parser": "^1.17.2",
         "express": "^4.15.3",
         "geojson-rewind": "^0.2.0",
