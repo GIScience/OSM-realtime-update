@@ -50,14 +50,14 @@ Point your browser to `http://localhost:1234/`.
 
 Base Url: `/api`
 
-Main collection: `/tasks`
+Main collection: `/api/tasks`
 
-Individual resource: `/tasks/:id`
+Individual resource: `/api/tasks/:id`
 
 
 #### Add task
 
-* URL: `/tasks`
+* URL: `/api/tasks`
 
 * Method: POST: x-www-form-unencoded or raw/JSON
 
@@ -98,7 +98,7 @@ Individual resource: `/tasks/:id`
 
 #### Delete task
 
-* URL: `/tasks`
+* URL: `/api/tasks`
 
 * Method: DELETE
 
@@ -120,19 +120,20 @@ Individual resource: `/tasks/:id`
 
 #### Get information about tasks
 
-* URL: /tasks
+* URL: `/api/tasks`
 
-	Individual tasks can be accessed via their resource URL `/tasks/:id`.
 
 * Method: GET
 
 * Filter Parameters in URL:
 
-	- *id* [int]: `/tasks?id=:id`
-	- *name* [string]: `/tasks?name=:name`
+	- *id* [int]: `/api/tasks?id=:id`
+	- *name* [string]: `/api/tasks?name=:name`
 		- multiple matches prints multiple tasks
 	
 	If no parameter is given, all tasks are returned.
+
+    Individual tasks can also be accessed via their resource URL `/api/tasks/:id`.
 
 * Response:
 
@@ -156,9 +157,7 @@ Individual resource: `/tasks/:id`
 	* curl http://localhost:1234/api/tasks/name=test1
 
 
-#### Authentication
 
-To be implemented
 
 
 &nbsp;
@@ -216,7 +215,7 @@ Algorithm:
 
 #### Task management
 
-Workers care for a specific task including scheduled updates. A master process
-manages all workers and checks at an interval whether a) workers became obsolete
+Worker objects care for a specific task including scheduled updates. A master object
+manages all workers and checks regularly whether a) workers became obsolete
 because tasks have been removed or b) a new worker should be spawned because a
 new task has been added.
