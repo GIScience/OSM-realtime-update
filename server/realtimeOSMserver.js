@@ -194,6 +194,28 @@ Controller.prototype.updateWorkers = function() {
     }.bind(this));
 };
 
+Controller.prototype.exit = function(signal) {
+    log.notice(`Received ${signal}. Shutting down...`);
+    // remove temporary files (poly-files and osmupdate folder)
+    var polyfiles = fs.readdirSync(".").filter(filename => filename.match("poly"));
+    if(polyfiles.length > 0) {
+        const rmPoly = spawnSync('rm', [...polyfiles]);
+        if(rmPoly.stderr.toString() !== '') {
+            log.warning(`[exit] Error removing polydata`,
+                         `rm stderr:\n ${rmPoly.stderr}`);
+        }
+    }
+    if(fs.existsSync("osmupdate_temp/")) {
+        const rmOsmupdate = spawnSync('rm', ["-r", "osmupdate_temp/"]);
+        if(rmOsmupdate.stderr.toString() !== '') {
+            log.warning(`[exit] Error removing osmupdate_temp/`,
+                         `rm stderr:\n ${rmOsmupdate.stderr}`);
+        }
+    }
+    // exit
+    process.exit();
+};
+
 function Worker(controller, task) {
     /* keeps the OSM data for a task up to date */
     this.controller = controller;
@@ -513,12 +535,16 @@ Worker.prototype.terminate = function() {
     if(this.updateProcess) this.updateProcess.kill();
     if(this.clipProcess) this.clipProcess.kill();
     if(this.wgetInitialFileProcess) this.wgetInitialFileProcess.kill();
-    const rm = spawnSync('rm', [this.task.URL]);
-    if(rm.stderr.toString() !== '') {
+    const rmData = spawnSync('rm', [this.task.URL]);
+    if(rmData.stderr.toString() !== '') {
         log.error(`[terminateWorker] Error removing data for task ${this.task.id}`,
-                     `rm stderr:\n ${rm.stderr}`);
+                     `rm stderr:\n ${rmData.stderr}`);
     }
     log.notice("Terminated worker for task", this.task.id);
 };
 
-new Controller();
+var realtimeosm = new Controller();
+
+process.on('SIGINT', realtimeosm.exit.bind(realtimeosm));
+process.on('SIGTERM', realtimeosm.exit.bind(realtimeosm));
+process.on('SIGHUP', realtimeosm.exit.bind(realtimeosm));
