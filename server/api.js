@@ -182,7 +182,7 @@ function api(customconfig) {
     //
     /// serve website
     //
-    api.use(express.static('../web/'));
+    api.use(express.static('./web/'));
     api.use('/data', serveIndex('./data/', {icons: true, view: "details"}));
     api.use('/data', express.static('./data/'));
 
