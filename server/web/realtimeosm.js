@@ -1,4 +1,3 @@
-/* jshint esversion: 6 */
 function init() {
     // add map
 	map = new ol.Map({
@@ -126,6 +125,10 @@ function init() {
         ]
     } );
 
+    // keep data updated
+    setInterval(function() {
+        tasksLayer.getSource().clear();
+    }, 20000);
     // keep table updated
     tasksLayer.getSource().on('change', updateTable);
     // keep map size updated with context
@@ -347,9 +350,14 @@ function createPopup(coordinates, content) {
 
 function updateTable() {
     // update table with tasks
+    console.log("Updating table");
     var tasks = tasksLayer.getSource().getFeatures();
     var table = $('table').DataTable();
-    table.clear().rows.add(tasks).draw();
+    table.clear();
+    if(tasks.length > 0) {
+        table.rows.add(tasks);
+    }
+    table.draw();
     // reselect row after update
     if(tasksLayer.selectedFeature)
         table.rows(`#${tasksLayer.selectedFeature.getId()}`).select();
