@@ -227,6 +227,12 @@ function Worker(controller, task) {
         return;
     }
     // find matching geofabrik extract
+    if(!this.controller.geofabrikMetadata) {
+        log.error("Can't create worker for task", this.task.id,
+                    "- no Geofabrik metadata.");
+        this.terminate();
+        return;
+    }
     let metadataMatch = this.findExtract(this.task.coverage,
                                          this.controller.geofabrikMetadata);
     if(metadataMatch === undefined) {
@@ -535,10 +541,12 @@ Worker.prototype.terminate = function() {
     if(this.updateProcess) this.updateProcess.kill();
     if(this.clipProcess) this.clipProcess.kill();
     if(this.wgetInitialFileProcess) this.wgetInitialFileProcess.kill();
-    const rmData = spawnSync('rm', [this.task.URL]);
-    if(rmData.stderr.toString() !== '') {
-        log.error(`[terminateWorker] Error removing data for task ${this.task.id}`,
-                     `rm stderr:\n ${rmData.stderr}`);
+    if(fs.existsSync(this.task.URL)) {
+        const rmData = spawnSync('rm', [this.task.URL]);
+        if(rmData.stderr.toString() !== '') {
+            log.error(`[terminateWorker] Error removing data for task ${this.task.id}`,
+                         `rm stderr:\n ${rmData.stderr}`);
+        }
     }
     log.notice("Terminated worker for task", this.task.id);
 };
