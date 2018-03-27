@@ -22,12 +22,12 @@ a, a:active {
     flex-flow: row wrap;
 }
 #sidebar{
-    flex: 1 0 280px;
+    flex: 1 0 400px;
     margin: .5em;
     overflow: auto;
 }
 #map{
-    flex: 1 0 280px;
+    flex: 1 0 400px;
     height: 75vh;
     margin: .5em;
 }
