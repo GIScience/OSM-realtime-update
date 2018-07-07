@@ -136,7 +136,8 @@ let testfun = {
             // compare response task with posted task
             assert.deepEqual(response, task,
                 "API response does not equal task JSON.\nTask: " +
-                JSON.stringify(task) + "\nResponse: " + JSON.stringify(response));
+                JSON.stringify(task, null, 4) + "\nResponse: " +
+                JSON.stringify(response, null, 4));
             console.log("POSTtask test successfull!\n");
             return 0;
         },
@@ -157,7 +158,8 @@ let testfun = {
             }
             assert.deepEqual(response, task,
                 "API response does not equal tasks array.\nTasks: " +
-                JSON.stringify(task) + "\nResponse: " + JSON.stringify(response));
+                JSON.stringify(task, null, 4) + "\nResponse: " +
+                JSON.stringify(response, null, 4));
             console.log("GETtaskByName test successfull!\n");
             return response;
         }
@@ -179,7 +181,8 @@ let testfun = {
             }
             assert.deepEqual(response, tasks,
                 "API response does not equal tasks array.\nTasks: " +
-                JSON.stringify(tasks) + "\nResponse: " + JSON.stringify(response));
+                JSON.stringify(tasks, null, 4) + "\nResponse: " +
+                JSON.stringify(response, null, 4));
             console.log("GETtasks test successfull!\n");
             return response;
         },
