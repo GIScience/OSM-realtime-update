@@ -11,11 +11,12 @@
 
 const assert = require('assert');
 const fs = require("fs"); // file system access
+// handle command line arguments to allow different config files (eg. for test environment)
+const args = require('minimist')(process.argv.slice(2));
 const path = require("path");
-const args = require('minimist')(process.argv.slice(2)); // handle command line arguments
 const winston = require('winston'); // logging
 const { spawnSync, execFile } = require('child_process'); // spawning processes
-const togeojson = require('togeojson');        // convert kml to geojson
+const togeojson = require('@mapbox/togeojson');        // convert kml to geojson
 const DOMParser = require('xmldom').DOMParser; // for togeojson
 const turfFlatten = require('@turf/flatten'); // handle geojsons
 const turfArea = require('@turf/area');

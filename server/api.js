@@ -8,7 +8,7 @@ const winston = require('winston'); // logging
 const morgan = require('morgan');   // logging express access
 const sqlite3 = require('sqlite3').verbose(); // database access
 const WKT = require('wellknown'); // WKT parsing
-const geojsonhint = require('geojsonhint'); // validate GeoJSONs
+const geojsonhint = require('@mapbox/geojsonhint'); // validate GeoJSONs
 const geojsonrewind = require('geojson-rewind'); // fix right-hand rule for GeoJSONs
 
 const geofabrikRegions = ["africa", "antarctica", "asia", "australia-oceania",
