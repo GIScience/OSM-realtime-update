@@ -128,7 +128,7 @@ function init() {
     // keep data updated
     setInterval(function() {
         tasksLayer.getSource().clear();
-    }, 20000);
+    }, 60000);
     // keep table updated
     tasksLayer.getSource().on('change', updateTable);
     // keep map size updated with context
