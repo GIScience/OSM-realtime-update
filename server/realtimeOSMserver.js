@@ -69,6 +69,7 @@ function Controller() {
     this.maxParallelUpdates = config.server.maxParallelUpdates;
     this.geofabrikMetaDir = config.server.geofabrikMetaDir;
     this.geofabrikMetadata = undefined;
+    this.planetfile = config.server.planetfile;
     this.api = api;
     this.workers = [];
     // update geofabrik metadata
@@ -228,45 +229,10 @@ function Worker(controller, task) {
         this.terminate();
         return;
     }
-    // find matching geofabrik extract
-    if(!this.controller.geofabrikMetadata) {
-        log.error("Can't create worker for task", this.task.id,
-                    "- no Geofabrik metadata.");
-        this.terminate();
-        return;
-    }
-    let metadataMatch = this.findExtract(this.task.coverage,
-                                         this.controller.geofabrikMetadata);
-    if(metadataMatch === undefined) {
-        log.warning("Can't create initial data file for task", this.task.id,
-                    "- no Geofabrik extract found. Terminating worker.");
-        this.terminate();
-        return;
-    }
 
-    // update coverage if geofabrikRegion-string was given
-    if (task.coverage.hasOwnProperty("geofabrikRegion")) {
-        // save metadata coverage
-        this.task.coverage = {
-            type: "Feature",
-            geometry: metadataMatch.geometry,
-            properties: {name: task.coverage.geofabrikRegion}
-        };
-        // update coverage in database
-        let updateCoverageSQL = this.controller.api.db.prepare(
-            `UPDATE tasks
-             SET coverage = ?
-             WHERE id = ?`, JSON.stringify(this.task.coverage), this.task.id);
-        updateCoverageSQL.run(function (err) {
-            if(err) log.error("[updateCoverage] SQL error:", err);
-        });
-    }
-    // update geofabrikRegion name
-    this.task.geofabrikRegion = metadataMatch.properties.geofabrikRegion;
-
-    this.updateTask();
     this.updateIntervalID = setInterval(this.updateTask.bind(this),
                                         this.task.updateInterval * 1000);
+    this.updateTask();
 }
 
 Worker.prototype.findExtract = function(givenPoly, extractsGeoJSON) {
@@ -367,47 +333,124 @@ Worker.prototype.clipExtract = function(task, callback) {
     }.bind(this));
 };
 
-Worker.prototype.createInitialDatafile = function() {
-    /* downloads initial data file in .pbf-format */
-    if(!this.controller.geofabrikMetadata) {
-        log.warning("Can't create initial data file for task", this.task.id,
-                    "- no Geofabrik metadata.");
-        return;
+Worker.prototype.createInitialDatafile = function(usePlanetfile = false) {
+    /* creates initial data file in .pbf-format */
+    if(usePlanetfile) {
+        if(this.controller.planetfile == undefined) {
+            log.error("Can't initialise data file for task", this.task.id,
+                        "- no planet file available. Terminating worker.");
+            this.terminate();
+            return;
+        }
+        // extract data from planetfile
+        const mkdir = spawnSync('mkdir', ['-p', path.dirname(this.task.URL)]);
+        if(mkdir.stderr.toString() !== '') {
+            log.error(
+                `[createInitialDatafile] mkdir stderr:\n ${mkdir.stderr}`
+            );
+        }
+        log.info("Extracting data for task", this.task.id, "from planet file",
+                 this.controller.planetfile);
+
+        // create poly file for clipping
+        let polyFile = this.createPolyFile(this.task);
+
+        this.planetfileExtractProcess = execFile('osmconvert',
+            ["-v", "--drop-broken-refs", "-B=" + polyFile, "-o=" + this.task.URL,
+                this.controller.planetfile], {maxBuffer: 1024 * 500},
+            function (error, stdout, stderr) {
+                if (error) {
+                    if(error.killed === true) {
+                        log.warning(`osmconvert process for task ${this.task.id} killed`);
+                        // TODO adjust error and success handling
+                    } else {
+                        log.error("Error extracting data from planet file for task",
+                        this.task.id, "Error:", error.message);
+                    }
+                } else {
+                    if (stderr.match("osmconvert: Last processed")) {
+                        log.notice("Successfully extracted data from planet file for task",
+                            this.task.id);
+                    } else log.warning(`Unexpected osmconvert output. stdout: ${stdout}.`,
+                        `stderr: ${stderr}`);
+                }
+                delete this.planetfileExtractProcess;
+
+                // remove poly-file
+                const rm = spawnSync('rm', [polyFile]);
+                if(rm.stderr.toString() !== '') {
+                    log.error(
+                        "[createInitialDatafile] Error removing poly-file for task",
+                        this.task.id, `rm stderr:\n ${rm.stderr}`
+                    );
+                    throw "Error removing poly-file for task.";
+                }
+            }.bind(this));
+    } else {
+        if(this.controller.geofabrikMetadata == undefined) {
+            log.error("Can't initialise data file for task", this.task.id,
+                        "- no Geofabrik metadata available. Trying again using planet file.");
+            this.createInitialDatafile(true);
+            return;
+        }
+        // find matching geofabrik extract and download data
+        let metadataMatch = this.findExtract(this.task.coverage,
+                                             this.controller.geofabrikMetadata);
+        if(metadataMatch === undefined) {
+            log.warning("Can't create initial data file for task", this.task.id,
+                        "- no Geofabrik extract found. Trying again using planet file.");
+            this.createInitialDatafile(true);
+            return;
+        }
+        // update coverage if geofabrikRegion-string was given
+        if (this.task.coverage.hasOwnProperty("geofabrikRegion")) {
+            // save metadata coverage
+            this.task.coverage = {
+                type: "Feature",
+                geometry: metadataMatch.geometry,
+                properties: {name: this.task.coverage.geofabrikRegion}
+            };
+            // update coverage in database
+            let updateCoverageSQL = this.controller.api.db.prepare(
+                `UPDATE tasks
+                 SET coverage = ?
+                 WHERE id = ?`, JSON.stringify(this.task.coverage), this.task.id);
+            updateCoverageSQL.run(function (err) {
+                if(err) log.error("[updateCoverage] SQL error:", err);
+            });
+        }
+        // update geofabrikRegion name
+        this.task.geofabrikRegion = metadataMatch.properties.geofabrikRegion;
+        const mkdir = spawnSync('mkdir', ['-p', path.dirname(this.task.URL)]);
+        if(mkdir.stderr.toString() !== '') {
+            log.error(
+                `[createInitialDatafile] mkdir stderr:\n ${mkdir.stderr}`
+            );
+        }
+        let geofabrikBase = 'http://download.geofabrik.de/';
+        let geofabrikURL = url.resolve(geofabrikBase,
+                                       this.task.geofabrikRegion + "-latest.osm.pbf");
+        log.info("Downloading", geofabrikURL, "for task", this.task.id);
+        this.wgetInitialFileProcess = execFile('wget', ['--progress=dot:giga', '-O',
+            this.task.URL, geofabrikURL], {maxBuffer: 1024 * 1024},
+            function (error, stdout, stderr) {
+                if (error) {
+                    if(error.killed === true) return;
+                    log.error(`wget error: ${error}\nstdout: ${stdout}\n`,
+                              `stderr: ${stderr}\n`,
+                              `processinfo:`, this.wgetInitialFileProcess);
+                    return;
+                }
+                if (stderr.match("saved")) {
+                    log.info(
+                        "Successfully downloaded",
+                        geofabrikURL, "for task", this.task.id
+                    );
+                }
+                this.clipExtract(this.task);
+                delete this.wgetInitialFileProcess;
+            }.bind(this));
     }
-    let geofabrikRegion = this.task.geofabrikRegion;
-    const mkdir = spawnSync('mkdir', ['-p', path.dirname(this.task.URL)]);
-    if(mkdir.stderr.toString() !== '') {
-        log.error(
-            `[createInitialDatafile] mkdir stderr:\n ${mkdir.stderr}`
-        );
-    }
-    let geofabrikBase = 'http://download.geofabrik.de/';
-    let suffixIdx = geofabrikRegion.match(this.controller.geofabrikMetaDir).index;
-    let suffix = geofabrikRegion.substr(suffixIdx + this.controller.geofabrikMetaDir.length,
-                                      geofabrikRegion.length) + "-latest.osm.pbf";
-    log.info(
-        "Downloading", geofabrikBase + suffix,
-        "for task", this.task.id
-    );
-    this.wgetInitialFileProcess = execFile('wget', ['--progress=dot:giga', '-O',
-        this.task.URL, geofabrikBase + suffix], {maxBuffer: 1024 * 1024},
-        function (error, stdout, stderr) {
-            if (error) {
-                if(error.killed === true) return;
-                log.error(`wget error: ${error}\nstdout: ${stdout}\n`,
-                          `stderr: ${stderr}\n`,
-                          `processinfo:`, this.wgetInitialFileProcess);
-                return;
-            }
-            if (stderr.match("saved")) {
-                log.info(
-                    "Successfully downloaded",
-                    geofabrikBase + suffix, "for task", this.task.id
-                );
-            }
-            this.clipExtract(this.task);
-            delete this.wgetInitialFileProcess;
-        }.bind(this));
 };
 
 Worker.prototype.updateTask = function() {
@@ -424,6 +467,11 @@ Worker.prototype.updateTask = function() {
         log.info(
             `Abort update, clipping for task ${this.task.id} running.`
         );
+        return;
+    }
+    if(this.planetfileExtractProcess !== undefined) {
+        log.info("Abort update, initial planet file extraction for task",
+                 this.task.id, "running.");
         return;
     }
     if(this.wgetInitialFileProcess !== undefined) {
@@ -507,7 +555,7 @@ Worker.prototype.updateTask = function() {
                     log.warning(`osmupdate process for task ${this.task.id} killed`);
                 } else if(error.toString().match("Your OSM file is already up-to-date.")) {
                     log.info(`Task ${this.task.id} already up-to-date.`);
-                } else log.error(`Error updating task. error: ${error.message}`);
+                } else log.error(`Error updating task. error: ${error.toString()}`);
             } else {
                 if (stderr.match("Completed successfully")) {
                     // replace old file with updated version
