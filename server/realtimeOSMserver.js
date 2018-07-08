@@ -160,7 +160,7 @@ Controller.prototype.updateWorkers = function() {
             if(worker.task.expirationDate) {
                 let expires = new Date(worker.task.expirationDate);
                 if(expires < Date.now()) {
-                    log.info(`Task ${worker.task.id} expired. Deleting task from db.`);
+                    log.info(`Task ${worker.task.id}:${worker.task.name} expired. Deleting task from db.`);
                     // delete from database
                     let SQLdelete = this.api.db.prepare("DELETE FROM tasks WHERE id = ?;",
                         worker.task.id);
@@ -360,7 +360,7 @@ Worker.prototype.clipExtract = function(task, callback) {
             throw "Error removing poly-file for task.";
         }
         log.info(
-            "Successfully clipped extract for task", this.task.id
+            `Successfully clipped extract for task ${this.task.id}: ${this.task.name}`
         );
         delete this.clipProcess;
         if(callback) callback();
@@ -413,7 +413,7 @@ Worker.prototype.createInitialDatafile = function() {
 Worker.prototype.updateTask = function() {
     /* updates task's OSM data */
     let timing = Date.now();
-    log.info("Starting update for task", this.task.id);
+    log.info(`Starting update for task ${this.task.id}: ${this.task.name}`);
     if(this.updateProcess !== undefined) {
         log.info(
             `Update for task ${this.task.id} already running.`
@@ -507,7 +507,7 @@ Worker.prototype.updateTask = function() {
                     log.warning(`osmupdate process for task ${this.task.id} killed`);
                 } else if(error.toString().match("Your OSM file is already up-to-date.")) {
                     log.info(`Task ${this.task.id} already up-to-date.`);
-                } else log.error(`Error updating task. error: ${error}`);
+                } else log.error(`Error updating task. error: ${error.message}`);
             } else {
                 if (stderr.match("Completed successfully")) {
                     // replace old file with updated version
