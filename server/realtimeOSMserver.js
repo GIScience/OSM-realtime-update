@@ -1,4 +1,4 @@
-/* Server that provides real-time OSM data for specific regions in .pbf file format.
+/* A server that provides real-time OSM data for specific regions in .pbf file format.
  * Regions are organised in tasks. An API handles task queries and modifications.
  * The server manages a flock of workers, one for each task, that keeps the
  * OSM data up-to-date.
@@ -9,7 +9,7 @@
 
 "use strict";
 
-const assert = require('assert');
+const assert = require("assert");
 const fs = require("fs"); // file system access
 // handle command line arguments to allow different config files (eg. for test environment)
 const args = require('minimist')(process.argv.slice(2));
@@ -21,6 +21,7 @@ const DOMParser = require('xmldom').DOMParser; // for togeojson
 const turfFlatten = require('@turf/flatten'); // handle geojsons
 const turfArea = require('@turf/area');
 const turfBooleanWithin = require('@turf/boolean-within');
+const url = require("url");
 
 // read config from config.js ('.js' allows comments)
 const config = require(args.c || "./config.js");
