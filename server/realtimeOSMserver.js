@@ -124,18 +124,19 @@ Controller.prototype.updateGeofabrikMetadata = function() {
     }
 
     // convert all boundary kml files to geojson
-    let boundaryFileList = walkSync(path.join(__dirname, this.geofabrikMetaDir));
+    let boundaryFileList = walkSync(this.geofabrikMetaDir);
     boundaryFileList.splice(boundaryFileList.findIndex(arr => arr.match("allkmlfiles")), 1);
     let geojsonBoundaries = [];
     for(let i in boundaryFileList) {
         let file = boundaryFileList[i];
         let kml = new DOMParser().parseFromString(fs.readFileSync(file, 'utf8'));
-        let gj = turfFlatten(togeojson.kml(kml));
-        gj.features.map(feature => {
-            feature.properties.geofabrikRegion = file.substr(0, file.length - 4).substr(5);
+        let geojsons = turfFlatten(togeojson.kml(kml));
+        geojsons.features.map(feature => {
+            let region = path.relative(this.geofabrikMetaDir, file).slice(0, -4);
+            feature.properties.geofabrikRegion = region;
             feature.properties.area = turfArea(feature.geometry);
         });
-        geojsonBoundaries = geojsonBoundaries.concat(gj.features);
+        geojsonBoundaries = geojsonBoundaries.concat(geojsons.features);
     }
 
     this.geofabrikMetadata = {
