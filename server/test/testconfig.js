@@ -10,14 +10,14 @@ const config = {
         7 debug: messages to debug an application */
     loglevel: 'debug',
     server: {
-        maxParallelUpdates: 10,
-        geofabrikMetaDir: "./test/testgeofabrikbounds/",
-        // seconds
-        geofabrikMetaUpdateInterval: 60*60*24,
-        workerUpdateInterval: 1,
         // time threshold after which data is redownloaded
         // instead of updated (days)
         dataAgeThreshold: 1,
+        maxParallelUpdates: 10,
+        geofabrikMetaDir: "./test/geofabrikbounds/",
+        geofabrikMetaUpdateInterval: 60*60*24, // [seconds]
+        planetfile: "planet.osm.pbf",
+        workerUpdateInterval: 1,
     },
     api: {
         port: 1234,
