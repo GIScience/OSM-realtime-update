@@ -5,7 +5,7 @@
     "main": "realtimeOSM.js",
     "scripts": {
         "start": "node realtimeOSMserver.js",
-        "pretest": "eslint **.js && rm -r -f ./test/testdata ./test/testgeofabrikbounds ./test/test.db ./test/testaccess.log",
+        "pretest": "./node_modules/.bin/eslint **.js && rm -r -f ./test/testdata ./test/testgeofabrikbounds ./test/test.db ./test/testaccess.log",
         "test": "node test/tests.js",
         "posttest": "rm -r -f ./test/testdata ./test/testgeofabrikbounds ./test/test.db ./test/testaccess.log"
     },
@@ -54,5 +54,8 @@
             "no-console": "off"
         }
     },
-    "devDependencies": {}
+    "devDependencies": {
+        "eslint": "^5.1.0",
+        "eslint-plugin-node": "^6.0.1"
+    }
 }
