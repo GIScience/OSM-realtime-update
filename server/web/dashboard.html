@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+
+<head>
+<meta charset='utf-8'>
+<title>Real-time OSM task manager</title>
+
+<link rel="stylesheet" type="text/css" href="./dashboard.css">
+<link rel="stylesheet" type="text/css" href="./lib/ol_v4.2.0/css/ol.css">
+<link rel="stylesheet" type="text/css" href="./lib/DataTables/datatables.css">
+<link rel="stylesheet" type="text/css" href="./lib/jquery-ui-1.12.1/jquery-ui.css">
+
+<script src='./lib/ol_v4.2.0/build/ol.js'></script>
+<script src='./lib/DataTables/datatables.min.js'></script>
+<script src='./lib/jquery-ui-1.12.1/jquery-ui.js'></script>
+<script src='./dashboard.js'></script>
+
+</head>
+
+<body onload='init()'>
+
+<div id='container'>
+
+<h1>Real-time OSM task manager</h1>
+
+<div id='flexrow'>
+    <div id='sidebar'>
+        <div id='tasklist'>
+            <table id="table" class="display compact"></table>
+        </div>
+        <button id=addButton name="button">Add Task</button>
+        <button id=deleteButton name="button" disabled>Delete Task</button>
+    </div>
+	<div id='map'> </div>
+    <div id="popup" class="ol-popup">
+        <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+        <div id="popup-content"></div>
+    </div>
+</div>
+
+<a href="/api/tasks" class=footerlink>Get all tasks as JSON</a>
+
+<a href="/data" class=footerlink>Get data</a>
+
+</div>
+</body>
+</html>

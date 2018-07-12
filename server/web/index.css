@@ -1,0 +1,78 @@
+*{
+    box-sizing: border-box;
+}
+body, p {
+    font-family: sans-serif;
+    font-size: 12pt;
+}
+.center {
+    display: block;
+    margin: auto;
+}
+.logo {
+    display: block;
+    margin-top: 1em;
+    border-bottom: none;
+}
+a, a:active {
+    color: black;
+    text-decoration: none;
+    border-bottom: 1px gray dotted;
+}
+#container{ 
+    margin: auto; /* Zentriert Inhalt */
+    padding: 2em;
+}
+#flexrow{
+   display: flex;
+   flex-flow: row wrap;
+}
+header{
+    flex: 0 1 350px;
+    margin: .5em 1em .5em 1em;
+}
+section{
+    flex: 1 1 700px;
+    max-width: 700px;
+    margin: .5em 1em .5em 1em;
+    order: 2;
+}
+footer{
+    flex: 0 1 300px;
+    order: 3;
+    margin: .5em 1em .5em 1em;
+    float: left;
+}
+.footerlink {
+    float: right;
+    margin-bottom: 1em;
+    margin-right: .5em;
+}
+.inputText {
+    margin-bottom: .7em;
+    width: 100%;
+    display: inline-block;
+}
+.inputDate {
+    margin-bottom: .7em;
+    width: 100%;
+    display: inline-block;
+}
+.inputNumber {
+    margin-bottom: .7em;
+    width: 100%;
+    display: inline-block;
+}
+/* Small screens */
+@media all and (max-width: 900px) {
+  #flexrow {
+    /* On small screens, we are no longer using row direction but column */
+    flex-direction: row;
+  }
+  section {
+    order: 2;
+  }
+  footer {
+    order: 3;
+  }
+}

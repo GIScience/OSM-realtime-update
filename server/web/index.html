@@ -1,39 +1,89 @@
 <!doctype html>
+
 <html>
 
-<!-- Radmelder - eine Anwendung zur Meldung von Störungen in der Radinfrastruktur -->
-
 <head>
+
 <meta charset='utf-8'>
-<title>Real-time OSM task manager</title>
-
-<link rel="stylesheet" type="text/css" href="./realtimeosm.css">
-<link rel="stylesheet" type="text/css" href="./lib/ol_v4.2.0/css/ol.css">
-<link rel="stylesheet" type="text/css" href="./lib/DataTables/datatables.css">
-<link rel="stylesheet" type="text/css" href="./lib/jquery-ui-1.12.1/jquery-ui.css">
-
-<script src='./lib/ol_v4.2.0/build/ol.js'></script>
-<script src='./lib/DataTables/datatables.min.js'></script>
-<script src='./lib/jquery-ui-1.12.1/jquery-ui.js'></script>
-<script src='./realtimeosm.js'></script>
+<title>Real-time OSM</title>
+<link rel="stylesheet" type="text/css" href="./index.css">
 
 </head>
 
-<body onload='init()'>
-
 <div id='container'>
 
-<h1>Real-time OSM task manager</h1>
+<div id='flexrow'>
+<header>
+    <h1><a href="http://realtime.openrouteservice.org">Real-time OSM</a></h1>
+
+    <p>A service providing near real-time OSM extracts.</p>
+
+    <p><a href="https://github.com/GIScience/OSM-realtime-update">
+            View the Project on GitHub<br><small>GIScience/OSM-realtime-update</small>
+    </a></p>
+
+    <p><a href="https://realtime.openrouteservice.org/dashboard.html">
+            See it running in production.
+    </a></p>
+</header>
+
+<section>
+    <p><i>
+        If you want to use <a href="https://realtime.openrouteservice.org/dashboard.html">our instance</a>, 
+        request an API key at <a href="javascript:window.location.href = 'mailto:' + ['realtime','openrouteservice.org'].join('@')">realtime<!---->@<!---->openrouteservice.org</a>
+    </i></p>
+
+    <p>Real-time OSM is a server that provides custom OSM extracts and keeps them up-to-date at any interval. If your machine is fast enough, in near real-time. Extraction jobs are managed via a REST API or a web dashboard. The software consists of three components:</p>
+
+    <ol>
+        <li><p>The API adds, deletes and requests information about tasks that provide
+            continuously updated region-bound OSM data via a permanent URL.</p></li>
+
+        <li><p>The backend runs, manages and gathers statistics for tasks.</p></li>
+
+        <li><p>The frontend allows manipulating tasks and serves the OSM extracts.</p></li>
+    </ol>
+
+    <p>Here is a screenshot:</p>
+    <img src="./img/realtimeosm_screenshot.png" class=center style="width:100%" alt="Screenshot real-time OSM">
+
+    <p>
+        You can look at the code at <a href="https://github.com/GIScience/OSM-realtime-update">GitHub</a> 
+        or see our instance running live <a href="https://realtime.openrouteservice.org/dashboard.html">here</a>. 
+        If you have any questions, send a mail to <a href="javascript:window.location.href = 'mailto:' + ['realtime','openrouteservice.org'].join('@')">realtime<!---->@<!---->openrouteservice.org</a>.
+    </p>
+
+</section>
+
+<footer>
+    <p>This project is funded and maintained by <a href="https://www.geog.uni-heidelberg.de/gis/heigit.html">HeiGIT Heidelberg</a></p>
+
+    <a href="https://www.geog.uni-heidelberg.de/gis/heigit.html">
+        <img class="logo center" src="./img/heigit_transparent.svg" style="width:50%" alt="HeiGIT Logo">
+    </a>
+
+    <a href="https://disaster.openrouteservice.org/">
+        <img class="logo center" src="./img/disaster_openrouteservice.png" style="width:80%" alt="Disaster OpenRouteService Logo">
+    </a>
+
+</footer>
+
+</div>
+
+
+</div>
+
+</body>
+</html>
+
+<!-- <h1>Real-time OSM</h1>
 
 <div id='flexrow'>
     <div id='sidebar'>
         <div id='tasklist'>
-            <table id="table" class="display compact"></table>
         </div>
-        <button id=addButton name="button">Add Task</button>
-        <button id=deleteButton name="button" disabled>Delete Task</button>
     </div>
-	<div id='map'> </div>
+    <div id='map'> </div>
     <div id="popup" class="ol-popup">
         <a href="#" id="popup-closer" class="ol-popup-closer"></a>
         <div id="popup-content"></div>
@@ -47,3 +97,4 @@
 </div>
 </body>
 </html>
+-->
