@@ -113,7 +113,9 @@ Controller.prototype.updateGeofabrikMetadata = function() {
     const tar = spawnSync('tar', ['xzf', 'allkmlfiles.tgz'],
                           {cwd: `./${this.geofabrikMetaDir}/`});
     if(tar.stderr.toString() !== "") {
-        log.error(`[updateGeofabrikMetadata] tar stderr:\n ${tar.stderr}`);
+        log.error(`Error extracting Geofabrik metadata. This likely means the archive is corrupted. tar stderr:\n ${tar.stderr}`);
+        this.geofabrikMetadata = null;
+        return;
     }
 
     function walkSync(dir) {
@@ -337,9 +339,9 @@ Worker.prototype.clipExtract = function(task, callback) {
 Worker.prototype.createInitialDatafile = function(usePlanetfile = false) {
     /* creates initial data file in .pbf-format */
     if(usePlanetfile) {
-        if(this.controller.planetfile == undefined) {
+        if(!fs.existsSync(this.controller.planetfile)) {
             log.error("Can't initialise data file for task", this.task.id,
-                        "- no planet file available. Terminating worker.");
+                        "- planet file '", this.controller.planetfile, "' not available. Terminating worker.");
             this.terminate();
             return;
         }
