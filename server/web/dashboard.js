@@ -1,4 +1,11 @@
-function init() {
+/* global ol */
+var map;
+var tasksLayer;
+var tasksTmpLayer;
+var selectInteraction;
+var drawInteraction;
+
+function init() { // eslint-disable-line no-unused-vars
     // add map
 	map = new ol.Map({
 		target : 'map',
@@ -108,20 +115,36 @@ function init() {
         select: {style: 'single', info: false},
         scrollX: true,
         scrollY: false,
+        lengthChange: false,
         // custom column definitions
-        columns: [{ data: "getId()", title: "ID"},
-          { data: "getProperties().name", title: "Name", className: "dt-left"},
-          { data: "getProperties().URL", title: "URL", className: "dt-left"},
-          { data: "getProperties().expirationDate", title: "expires", className: "dt-left",
-              render: data => {return data !== null ? data.substring(0, 19) : '';}},
-          { data: "getProperties().addedDate", title: "added", className: "dt-left",
-              render: data => {return data !== null ? data.substring(0, 16) : '';}},
-          { data: "getProperties().updateInterval", title: "update interval [s]", 
-              className: "dt-left"},
-          { data: "getProperties().lastUpdated", title: "updated", className: "dt-left",
-              render: data => {return data !== null ? data.substring(0, 19) : '';}},
-          { data: "getProperties().averageRuntime", title: "mean runtime [s]", 
-              className: "dt-left", render: data => Math.trunc((data/100))/10},
+        columns: 
+            [{ data: task => task.getId(), title: "ID"},
+             { data: task => task.getProperties().name, title: "Name", className: "dt-left"},
+             { data: task => task.getProperties().URL, title: "URL", className: "dt-left"},
+             { data: task => {
+                 let data = task.getProperties().expirationDate;
+                 if(data !== null) {
+                     return data.substring(0, 19).split("T").join("\n");
+                 } else return '';
+               }, title: "expires", className: "dt-left"},
+             { data: task => {
+                 let data = task.getProperties().addedDate;
+                 if(data !== null) {
+                     return data.substring(0, 19).split("T").join("\n");
+                 } else return '';
+               }, title: "added", className: "dt-left"},
+             { data: task => task.getProperties().updateInterval/60, 
+                 title: "update interval [min]", className: "dt-left"},
+             { data: task => {
+                 let data = task.getProperties().lastUpdated;
+                 if(data !== null) {
+                     return data.substring(0, 19).split("T").join("\n");
+                 } else return '';
+               }, title: "updated", className: "dt-left"},
+             { data: task => {
+                 let data = task.getProperties().averageRuntime;
+                 return Math.trunc((data/100))/10;
+               }, title: "mean runtime [s]", className: "dt-left"}
         ]
     } );
 
@@ -195,7 +218,6 @@ function handleDeleteButtonClick() {
     // refresh data source and disable delete button, 
     // assuming no task is selected after refresh.
     tasksLayer.getSource().clear();
-    //deselectFeature(tasksLayer.selectedFeature);
     deleteBtn.setAttribute("disabled", "disabled");
 }
 
@@ -224,9 +246,9 @@ function handleDrawEnd(e) {
             <input type=text id=inputName class=inputText name=name required>
             <label for="expirationDate" class=inputLabel>Expires:</label>
             <input type=text id=inputExpires class=inputDate name=expirationDate>
-            <label for=updateInterval class=inputLabel>updateInterval in seconds:</label>
+            <label for=updateInterval class=inputLabel>Update interval in minutes:</label>
             <input type=number id=inputUpdateInterval class=inputNumber 
-                   name=updateInterval value=600>
+                   name=updateInterval value=5>
             <button type="submit" id=submitButton class=popupSubmit>Save task</button>
         </form>
         <p id="responseText" class="responseText"></p>`;
@@ -238,11 +260,11 @@ function handleDrawEnd(e) {
     $("#inputExpires").datepicker({dateFormat: "yy-mm-dd"});
 }
 
-function handleTaskSubmit() {
-    // submits new report to API
+function handleTaskSubmit() { // eslint-disable-line no-unused-vars
+    // submits new report to API, triggered by submit button
     var name = document.getElementById('inputName').value;
     var expirationDate = document.getElementById('inputExpires').value;
-    var updateInterval = document.getElementById('inputUpdateInterval').value;
+    var updateInterval = document.getElementById('inputUpdateInterval').value*60;
     // generate geojson from feature
     var feature = tasksTmpLayer.getSource().getFeatures()[0];
     var featureGeoJSON = new ol.format.GeoJSON({featureProjection: "EPSG:3857"})
@@ -316,7 +338,7 @@ function handleMapSelect(e) {
     });
 }
 
-function deselectFeature(feature) {
+function deselectFeature() {
     // deselect from table
     if($('table').DataTable().rows( {selected: true}).data().length > 0)
         $('table').DataTable().rows().deselect();
@@ -329,13 +351,34 @@ function deselectFeature(feature) {
 
 function featureToPopupContent(feature) {
     // generate html content for popup from feature
+    let expirationDate;
+    if(feature.getProperties().expirationDate !== null) {
+        expirationDate = feature.getProperties().expirationDate.substring(0,19);
+    } else {
+        expirationDate = '';
+    }
+    let lastUpdated;
+    if(feature.getProperties().lastUpdated !== null) {
+        lastUpdated = feature.getProperties().lastUpdated.substring(0,19);
+    } else {
+        lastUpdated = '';
+    }
+    let addedDate;
+    if(feature.getProperties().addedDate !== null) {
+        addedDate = feature.getProperties().addedDate.substring(0,19);
+    } else {
+        addedDate = '';
+    }
+
     var popupContent = `
         <h3 class=popupName>${feature.getProperties().name}</h3>
         <p class=popupId>id: ${feature.getId()}</p>
-        <p class=popupExpirationDate>Expires: ${feature.getProperties().expirationDate}</p>
-        <p class=popupUpdateInterval>Update interval: ${feature.getProperties().updateInterval}</p>
-        <p class=popupDate>Last updated: ${feature.getProperties().lastUpdated}</p>
-        <p class=popupDate>Added: ${feature.getProperties().addedDate}</p>`;
+        <p class=popupExpirationDate>Expires: ${expirationDate} </p>
+        <p class=popupUpdateInterval>Update interval [min]:
+        ${feature.getProperties().updateInterval/60}
+        </p>
+        <p class=popupDate>Last updated: ${lastUpdated} </p>
+        <p class=popupDate>Added: ${addedDate} </p>`;
     return popupContent;
 }
 
@@ -350,7 +393,6 @@ function createPopup(coordinates, content) {
 
 function updateTable() {
     // update table with tasks
-    console.log("Updating table");
     var tasks = tasksLayer.getSource().getFeatures();
     var table = $('table').DataTable();
     table.clear();
