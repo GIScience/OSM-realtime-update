@@ -27,16 +27,16 @@ const url = require("url");
 const config = require(args.c || "./config.js");
 
 // config sanity checks
-assert(typeof config.server.maxParallelUpdates == "number",
+assert(typeof config.server.maxParallelUpdates === "number",
     "Configuration error: maxParallelUpdates must be a number.");
-assert(typeof config.server.geofabrikMetaDir == 'string',
+assert(typeof config.server.geofabrikMetaDir === 'string',
     "Configuration error: geofabrikMetaDir must be a number.");
-assert(typeof config.server.geofabrikMetaUpdateInterval == 'number',
+assert(typeof config.server.geofabrikMetaUpdateInterval === 'number',
     "Configuration error: geofabrikMetaUpdateInterval must be a string");
-assert(typeof config.server.workerUpdateInterval == 'number' &&
+assert(typeof config.server.workerUpdateInterval === 'number' &&
     config.server.workerUpdateInterval > 0,
     "Configuration error: workerUpdateInterval must be a positive number");
-assert(typeof config.server.dataAgeThreshold == 'number' &&
+assert(typeof config.server.dataAgeThreshold === 'number' &&
     config.server.dataAgeThreshold > 0,
     "Configuration error: dataAgeThreshold must be a positive number");
 assert((typeof config.loglevel == "number" &&
