@@ -16,7 +16,7 @@ const config = {
         maxParallelUpdates: 6,
         geofabrikMetaDir: "./geofabrikbounds/",
         geofabrikMetaUpdateInterval: 60*60*24, // [seconds]
-        planetfile: "planet.pbf",
+        planetfile: null,
         workerUpdateInterval: 5,
     },
     api: {

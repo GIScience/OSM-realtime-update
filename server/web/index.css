@@ -1,0 +1,36 @@
+body, p {
+    font-family: sans-serif;
+}
+body{
+    padding: 5vh 2vw;
+}
+.center {
+    margin: 0 auto;
+}
+.logo {
+    display: block;
+    margin-top: 1em;
+    border-bottom: none;
+}
+a, a:active {
+    color: black;
+    text-decoration: none;
+    border-bottom: 1px gray dotted;
+}
+#flexrow{
+   display: flex;
+   flex-flow: row wrap;
+}
+header{
+    flex: 0 1 350px;
+    margin: 1vh 1.5vw;
+}
+section{
+    flex: 1 1 700px;
+    max-width: 700px;
+    margin: 1vh 1.5vw;
+}
+footer{
+    flex: 0 1 300px;
+    margin: 1vh 1.5vw;
+}
