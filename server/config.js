@@ -8,7 +8,7 @@ const config = {
         5 notice: a normal but significant condition
         6 info: a purely informational message
         7 debug: messages to debug an application */
-    loglevel: 'notice',
+    loglevel: 'info',
     server: {
         // time threshold after which data is redownloaded
         // instead of updated (days)
@@ -16,7 +16,7 @@ const config = {
         maxParallelUpdates: 6,
         geofabrikMetaDir: "./geofabrikbounds/",
         geofabrikMetaUpdateInterval: 60*60*24, // [seconds]
-        planetfile: null,
+        planetfile: "./planet-latest.osm.pbf",
         workerUpdateInterval: 5,
     },
     api: {
