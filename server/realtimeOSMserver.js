@@ -245,7 +245,7 @@ Worker.prototype.findExtract = function(givenPoly, extractsGeoJSON) {
         // does not find extract if coverage boundaries match extract boundaries
         // -> solve by addig extra difference === null check if necessary
         if (givenPoly.hasOwnProperty('geofabrikRegion')) {
-            let regex = RegExp("\\/"+givenPoly.geofabrikRegion+"$");
+            let regex = RegExp("\\/"+givenPoly.geofabrikRegion+"$|^"+givenPoly.geofabrikRegion+"$");
             return extract.properties.geofabrikRegion.match(regex) ?
                 true : false;
         } else if (turfBooleanWithin(givenPoly, extract)) {
