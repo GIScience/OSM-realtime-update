@@ -22,14 +22,15 @@
         "@turf/boolean-within": "^5.1.5",
         "@turf/flatten": "^5.1.5",
         "body-parser": "^1.18.3",
-        "express": "^4.16.3",
+        "express": "^4.16.4",
         "geojson-rewind": "^0.2.0",
         "minimist": "^1.2.0",
-        "morgan": "^1.8.2",
+        "morgan": "^1.9.1",
+        "sequelize": "^4.43.0",
         "serve-index": "^1.9.1",
-        "sqlite3": "^4.0.1",
+        "sqlite3": "^4.0.6",
         "wellknown": "^0.5.0",
-        "winston": "^2.4.3",
+        "winston": "^2.4.4",
         "xmldom": "^0.1.27"
     },
     "eslintConfig": {
@@ -56,7 +57,7 @@
         }
     },
     "devDependencies": {
-        "eslint": "^5.1.0",
+        "eslint": "^5.15.3",
         "eslint-plugin-node": "^6.0.1"
     }
 }
