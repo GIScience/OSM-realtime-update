@@ -17,15 +17,21 @@ function init() { // eslint-disable-line no-unused-vars
         document.getElementById('usermanagementlink').href = "./usermanagement.html?apikey=" + apikey;
     }
 
-    // listen to changes in the API key input and change parameters accordingly
     apikeyInput.oninput = function() {
-        // change user management link
-        document.getElementById('usermanagementlink').href = "./usermanagement.html?apikey=" + apikeyInput.value;
-        // change url
-        var params = new URLSearchParams(url.search);
-        params.set('apikey', apikeyInput.value);
-        url.search = params.toString();
-        window.history.pushState(undefined, "", url.toString());
+        var oldvalue = apikeyInput.value;
+        setTimeout(function () {
+            if(oldvalue != apikeyInput.value) return;
+            // change user management link
+            document.getElementById('usermanagementlink').href = "./usermanagement.html?apikey=" + 
+                apikeyInput.value;
+            // change url
+            var params = new URLSearchParams(url.search);
+            params.set('apikey', apikeyInput.value);
+            url.search = params.toString();
+            window.history.pushState(undefined, "", url.toString());
+            // refresh tasks to get author information in case admin key was provided
+            tasksLayer.getSource().clear();
+        }, 1000);
     };
 
     // add map

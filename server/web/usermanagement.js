@@ -19,27 +19,32 @@ function init() { // eslint-disable-line no-unused-vars
 
     // listen to changes in the API key input and change parameters accordingly
     apikeyInput.oninput = function() {
-        var url = new URL(window.location.href);
-        var params = new URLSearchParams(url.search);
-        if(apikeyInput.value) {
-            apikey = apikeyInput.value;
-            // change user management link
-            document.getElementById('dashboardlink').href = "./dashboard.html?apikey=" + apikeyInput.value;
-            document.getElementById('getuserslink').href = "./api/users/?apikey=" + apikey;
-            // change url
-            params.set('apikey', apikeyInput.value);
-            url.search = params.toString();
-            window.history.pushState(undefined, "", url.toString());
-            getUsers(apikeyInput.value, handleUserupdate);
-        } else {
-            // change user management link
-            document.getElementById('dashboardlink').href = "./dashboard.html";
-            document.getElementById('getuserslink').href = "./api/users/";
-            // change url
-            params.delete('apikey');
-            url.search = params.toString();
-            window.history.pushState(undefined, "", url.toString());
-        }
+        var oldvalue = apikeyInput.value;
+        // add delay to response to avoid too many requests
+        setTimeout(function () {
+            if(oldvalue != apikeyInput.value) return;
+            var url = new URL(window.location.href);
+            var params = new URLSearchParams(url.search);
+            if(apikeyInput.value) {
+                apikey = apikeyInput.value;
+                // change user management link
+                document.getElementById('dashboardlink').href = "./dashboard.html?apikey=" + apikeyInput.value;
+                document.getElementById('getuserslink').href = "./api/users/?apikey=" + apikey;
+                // change url
+                params.set('apikey', apikeyInput.value);
+                url.search = params.toString();
+                window.history.pushState(undefined, "", url.toString());
+                getUsers(apikeyInput.value, handleUserupdate);
+            } else {
+                // change user management link
+                document.getElementById('dashboardlink').href = "./dashboard.html";
+                document.getElementById('getuserslink').href = "./api/users/";
+                // change url
+                params.delete('apikey');
+                url.search = params.toString();
+                window.history.pushState(undefined, "", url.toString());
+            }
+        }, 1000);
     };
 
     if(apikey) {
