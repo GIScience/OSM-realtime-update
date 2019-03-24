@@ -88,6 +88,32 @@ let testtasks = [
     }
 ];
 
+let testusers = [
+    {
+        name: "admin",
+        email:"",
+        role:"admin"
+    },
+    {
+        name: "AverageJoe",
+        comment: "Complete user",
+        role: "user",
+        email: "average@joe.com"
+    },
+    {
+        name: "GrandpaRick",
+        comment: "User has no mail",
+        role: "user",
+        email: ""
+    },
+    {
+        name: "AverageAdmin",
+        comment: "Admin user",
+        role: "admin",
+        email: "average@admin.com"
+    }
+];
+
 function makeTaskComparable(task){
     // deletes data from task JSON that is
     // hard to compare and thus hard to test
@@ -98,10 +124,20 @@ function makeTaskComparable(task){
     delete task.coverage;
     delete task.comment;
     // round expiration date to minute
-    if (task.expirationDate !== "") {
+    if (task.expirationDate) {
         task.expirationDate = task.expirationDate.substring(0, 16);
     }
     return task;
+}
+
+function makeUserComparable(user){
+    // deletes data from task JSON that is
+    // hard to compare and thus hard to test
+    delete user.apikey;
+    delete user.signupDate;
+    delete user.approved;
+    delete user.comment;
+    return user;
 }
 
 let testfun = {
@@ -164,7 +200,145 @@ let testfun = {
             return response;
         }
     },
+    userspecific: {
+        POSTuser: function POSTuser(testuser) {
+            // Action: POST:x-www-form-unencoded a task using curl
+            // Expected result: JSON response with the task information
+
+            // deep clone test task since we will modify it to make it
+            // comparable
+            let user = JSON.parse(JSON.stringify(testuser));
+            let commandstring = `curl --data 'name=${user.name}&` +
+                `email=${user.email}&` +
+                `apikey=masterpassword&` +
+                `role=${user.role}' ` +
+                `http://localhost:1234/api/users`;
+            const curl = child.execSync(commandstring, {stdio: "pipe"});
+            let response;
+            try{
+                response = JSON.parse(curl.toString());
+            } catch (err) {
+                throw Error("Parsing API response:\n\n" + err +
+                    "\n\nResponse: " + curl.toString() + "\n");
+            }
+            // delete all unpredictable data
+            response = makeUserComparable(response);
+            user = makeUserComparable(user);
+            // compare response task with posted task
+            assert.deepEqual(response, user,
+                "API response does not equal user JSON.\nTask: " +
+                JSON.stringify(user, null, 4) + "\nResponse: " +
+                JSON.stringify(response, null, 4));
+            console.log("POSTuser test successfull!\n");
+            return 0;
+        },
+        // getUserByName
+        GETuserByName: function GETuserByName(testuser) {
+            // deep clone
+            let user = JSON.parse(JSON.stringify(testuser));
+            user = makeUserComparable(user);
+            let commandstring = `curl 'http://localhost:1234/api/users/name=${user.name}?apikey=masterpassword'`;
+            const curl = child.execSync(commandstring, {stdio: "pipe"});
+            let response;
+            try{
+                response = JSON.parse(curl.toString());
+                assert(response.length === 1, "Response contains more than one user.");
+                response = makeUserComparable(response[0]);
+            } catch (err) {
+                throw Error("Parsing API response:\n\n" + err +
+                    "\n\nResponse: " + curl.toString());
+            }
+            assert.deepEqual(response, user,
+                "API response does not equal users array.\nUsers: " +
+                JSON.stringify(user, null, 4) + "\nResponse: " +
+                JSON.stringify(response, null, 4));
+            console.log("GETuserByName test successfull!\n");
+            return response;
+        }
+    },
     onetime: {
+        // get all users
+        GETusers: function GETusers() {
+            // deep clone
+            let users = JSON.parse(JSON.stringify(testusers));
+            users = users.map(user => makeUserComparable(user));
+            let commandstring = `curl http://localhost:1234/api/users?apikey=masterpassword`;
+            const curl = child.execSync(commandstring, {stdio: "pipe"});
+            let response;
+            try{
+                response = JSON.parse(curl.toString());
+                response = response.map(user => makeUserComparable(user));
+            } catch (err) {
+                throw Error("Parsing API response:\n\n" + err +
+                    "\n\nResponse: " + curl.toString());
+            }
+            assert.deepEqual(response, users,
+                "API response does not equal users array.\nUsers: " +
+                JSON.stringify(users, null, 4) + "\nResponse: " +
+                JSON.stringify(response, null, 4));
+            console.log("GETusers test successfull!\n");
+            return response;
+        },
+        // approve user
+        APPROVEuser: function APPROVEuser() {
+            // add user without admin key, then approve with admin key
+            let user = {
+                name: "Odysseus",
+                role: "user",
+                email: "disapproved@odysseus.com"
+            };
+            let curlstring = `curl --data 'name=${user.name}&` +
+                `email=${user.email}&` +
+                `role=${user.role}' ` +
+                `http://localhost:1234/api/users`;
+            const postcurl = child.execSync(curlstring, {stdio: "pipe"});
+            let response = postcurl.toString();
+            // approve user
+            curlstring = `curl http://localhost:1234/api/users/approve/name=${user.name}?apikey=masterpassword`;
+            const approvecurl = child.execSync(curlstring, {stdio: "pipe"});
+            response = approvecurl.toString();
+            assert(response === "Successfully approved user with name=" + user.name,
+                   `APPROVE not successfull, response: ${response}`);
+            // test if APPROVE really was successfull
+            curlstring = `curl http://localhost:1234/api/users/` +
+                         `name=${user.name}?apikey=masterpassword`;
+            const namecurl = child.execSync(curlstring, {stdio: "pipe"});
+            try{
+                response = JSON.parse(namecurl.toString())[0];
+            } catch (err) {
+                throw Error("Parsing API response:\n\n" + err +
+                    "\n\nResponse: " + namecurl.toString());
+            }
+            assert(response.approved === true, "APPROVEuser failed. User was not approved.");
+            console.log("APPROVEuser successfull!\n");
+        },
+        // delete user
+        DELETEuser: function DELETEuser() {
+            // deep clone
+            let users = JSON.parse(JSON.stringify(testusers));
+            let usersForRemoval = ["AverageJoe", "GrandpaRick"];
+            users = users.filter(user => usersForRemoval.includes(user.name));
+            users.forEach(user => {
+                let curlstring = `curl --data "name=${user.name}" -X DELETE ` +
+                                 `http://localhost:1234/api/users?apikey=masterpassword`;
+                const deletecurl = child.execSync(curlstring, {stdio: "pipe"});
+                let response = deletecurl.toString();
+                assert(response === "Successfully deleted user with name=" + user.name,
+                       `DELETE not successfull, response: ${response}`);
+                // test if DELETE really was successfull
+                curlstring = `curl http://localhost:1234/api/users/` +
+                             `name=${user.name}?apikey=masterpassword`;
+                const namecurl = child.execSync(curlstring, {stdio: "pipe"});
+                try{
+                    response = JSON.parse(namecurl.toString());
+                } catch (err) {
+                    throw Error("Parsing API response:\n\n" + err +
+                        "\n\nResponse: " + namecurl.toString());
+                }
+                assert(response.length === 0, "Response is not empty.");
+            });
+            console.log("DELETEusers successfull!\n");
+        },
         GETtasks: function GETtasks() {
             // deep clone
             let tasks = JSON.parse(JSON.stringify(testtasks));
@@ -187,6 +361,7 @@ let testfun = {
             return response;
         },
         DELETEtask: function DELETEtasks() {
+            // deep clone
             let tasks = JSON.parse(JSON.stringify(testtasks));
             let tasksForRemoval = ["ManchesterTest", "TsuruokaTest"];
             tasks = tasks.filter(task => tasksForRemoval.includes(task.name));
@@ -248,10 +423,21 @@ const server = child.spawn("node", ["./realtimeOSMserver.js",
 server.stdout.on('data', (data) => serverlog += data);
 server.stderr.on('data', (data) => serverlog += data);
 
-// wait a second for startup, then start testing
+// wait a bit for startup, then start testing
 setTimeout(function() {
     try {
         // start testing
+        for (let user of testusers) {
+            // jump over default role
+            if(user.name === "admin") continue;
+
+            for (let fun in testfun.userspecific) {
+                fun = testfun.userspecific[fun];
+                console.log("Running test:", fun.name,
+                            "for task", user.name, ":", user.comment);
+                fun(user);
+            }
+        }
         for (let task of testtasks) {
             for (let fun in testfun.taskspecific) {
                 fun = testfun.taskspecific[fun];
@@ -279,4 +465,4 @@ setTimeout(function() {
         server.kill();
         throw Error(err);
     }
-}, 2000);
+}, 3000);

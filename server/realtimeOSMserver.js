@@ -77,7 +77,6 @@ function Controller() {
     setInterval(this.updateGeofabrikMetadata.bind(this),
         config.server.geofabrikMetaUpdateInterval * 1000);
     // update list of workers
-    this.updateWorkers();
     setInterval(this.updateWorkers.bind(this),
         config.server.workerUpdateInterval * 1000);
     log.notice("Real-time OSM server running.");
@@ -154,9 +153,7 @@ Controller.prototype.updateWorkers = function() {
 
     let oldWorkerIDs = this.workers.map(worker => worker.task.id);
     // get tasks and sync with worker list
-    let SQLselect = this.api.db.prepare("SELECT * FROM tasks;");
-    SQLselect.all(function (err, tasks) {
-        if(err) log.error("Can't get list of tasks from database", err);
+    this.api.db.tasks.findAll().then(function(tasks) {
         // list of task ids handled by workers
         let taskIDs = tasks.map(task => task.id);
         // delete workers that work on tasks no longer in database
@@ -166,11 +163,12 @@ Controller.prototype.updateWorkers = function() {
                 if(expires < Date.now()) {
                     log.info(`Task ${worker.task.id}:${worker.task.name} expired. Deleting task from db.`);
                     // delete from database
-                    let SQLdelete = this.api.db.prepare("DELETE FROM tasks WHERE id = ?;",
-                        worker.task.id);
-                    SQLdelete.all(function (err) {
-                        if(err) log.error("Error deleting task", worker.task.id,
-                            "from database", err);
+                    api.db.tasks.destroy({
+                        where: {
+                            id: worker.task.id
+                        }
+                    }).catch(err => {
+                        log.error("Error deleting task", worker.task.id, "from database", err);
                     });
                     // remove task from taskIDs in order to trigger worker removal
                     let taskIdx = taskIDs.indexOf(worker.task.id);
@@ -197,7 +195,9 @@ Controller.prototype.updateWorkers = function() {
         if(oldWorkerIDs.join("") != newWorkerIDs.join("")) {
             log.notice("Updated worker list. Current tasks handled:", newWorkerIDs);
         }
-    }.bind(this));
+    }.bind(this)).catch(err => {
+        log.error("[updateWorkers] Can't get list of tasks from database", err);
+    });
 };
 
 Controller.prototype.exit = function(signal) {
@@ -414,13 +414,10 @@ Worker.prototype.createInitialDatafile = function(usePlanetfile = false) {
                 properties: {name: this.task.coverage.geofabrikRegion}
             };
             // update coverage in database
-            let updateCoverageSQL = this.controller.api.db.prepare(
-                `UPDATE tasks
-                 SET coverage = ?
-                 WHERE id = ?`, JSON.stringify(this.task.coverage), this.task.id);
-            updateCoverageSQL.run(function (err) {
-                if(err) log.error("[updateCoverage] SQL error:", err);
-            });
+            this.controller.api.db.tasks.update(
+                {coverage: JSON.stringify(this.task.coverage)},
+                {where: {id: this.task.id}}
+            ).catch(err => log.error("[updateCoverage] SQL error:", err));
         }
         // update geofabrikRegion name
         this.task.geofabrikRegion = metadataMatch.properties.geofabrikRegion;
@@ -514,31 +511,27 @@ Worker.prototype.updateTask = function() {
     // helper function that finishes update by inserting timings
     let finishTaskUpdate = function() {
         // insert timing into database
-        let insertTimingSQL = this.controller.api.db.prepare(
-            `INSERT INTO taskstats (timestamp, taskID, timing)
-                VALUES (?, ?, ?);`,
-                new Date().toISOString(), this.task.id, Date.now() - timing);
-        insertTimingSQL.run(function (err) {
-            if(err) log.error("[updateTask] SQL error:", err);
-        });
+        this.controller.api.db.taskstats.create({
+            timestamp: new Date().toISOString(),
+            taskID: this.task.id,
+            timing: Date.now() - timing
+        }).catch(err => log.error("[updateTask] SQL error:", err));
+
         // update timing statistics
-        let updateTimingStatsSQL = this.controller.api.db.prepare(
+        this.controller.api.db.query(
             `UPDATE tasks
              SET averageRuntime = (SELECT avg(timing) FROM taskstats
                                    WHERE taskID = ?)
-             WHERE id = ?`, this.task.id, this.task.id);
-        updateTimingStatsSQL.run(function (err) {
-            if(err) log.error("[updateTask] SQL error:", err);
-        });
+             WHERE id = ?`, 
+            { replacements: [this.task.id, this.task.id], type: api.db.QueryTypes.SELECT }
+        ).catch(err => log.error("[updateTask] SQL error:", err));
+
         // update lastUpdated
-        let updateLastUpdatedSQL = this.controller.api.db.prepare(
-            `UPDATE tasks
-             SET lastUpdated = ?
-             WHERE id = ?`,
-             new Date().toISOString(), this.task.id);
-        updateLastUpdatedSQL.run(function (err) {
-            if(err) log.error("[updateTask] SQL error:", err);
-        });
+        this.controller.api.db.tasks.update(
+            {lastUpdated: new Date().toISOString()},
+            {where: {id: this.task.id}}
+        ).catch(err => log.error("[updateTask] SQL error:", err));
+
         log.notice("Successfully updated task", this.task.id);
     };
     // create poly file for clipping

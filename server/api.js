@@ -1,12 +1,14 @@
 "use strict";
 
+const fs = require('fs'); // file system operations
+const crypto = require('crypto'); // file system operations
 const assert = require('assert'); // assertions for testing
 const express = require('express');
 const serveIndex = require('serve-index');
 const bodyParser = require('body-parser');
 const winston = require('winston'); // logging
 const morgan = require('morgan');   // logging express access
-const sqlite3 = require('sqlite3').verbose(); // database access
+const sequelize = require('sequelize'); // database access
 const WKT = require('wellknown'); // WKT parsing
 const geojsonhint = require('@mapbox/geojsonhint'); // validate GeoJSONs
 const geojsonrewind = require('geojson-rewind'); // fix right-hand rule for GeoJSONs
@@ -101,8 +103,10 @@ function api(customconfig) {
         "Configuration error: port must be a number.");
     assert(typeof config.api.accesslog == 'string',
         "Configuration error: accesslog must be a string");
-    assert(typeof config.api.taskdb == 'string',
-        "Configuration error: taskdb must be a string");
+    assert(typeof config.api.database == 'string',
+        "Configuration error: database must be a string");
+    assert(typeof config.api.adminkey == 'string',
+        "Configuration error: adminkey must be a string");
     assert((typeof config.loglevel == "number" &&
         config.loglevel >= 0 && config.loglevel < 8) ||
         typeof config.loglevel == "string" &&
@@ -161,23 +165,68 @@ function api(customconfig) {
     });
 
     // initialise data storage
-    const dbname = config.api.taskdb;
-    api.db = new sqlite3.Database(dbname);
-    api.db.serialize(function() {
-        api.db.run("CREATE TABLE if not exists tasks (" +
-            "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-            "name TEXT NOT NULL, " +
-            "coverage BLOB NOT NULL, " +
-            "URL TEXT, " +
-            "expirationDate TEXT, " +
-            "updateInterval INT DEFAULT 600, " +
-            "lastUpdated TEXT, " +
-            "addedDate TEXT, " +
-            "averageRuntime TEXT, " +
-            "unique(coverage));");
-        api.db.run("CREATE TABLE if not exists taskstats (timestamp TEXT PRIMARY KEY, " +
-            "taskID INTEGER, timing INTEGER);");
+    api.db = new sequelize(config.api.database, null, null, {
+        dialect: "sqlite",
+        storage: config.api.database,
+        logging: false,
+        operatorsAliases: false
     });
+
+    // define tasks, taskstats and user model and create database if not exists
+    api.db.tasks = api.db.define('tasks', {
+        id: {type: sequelize.INTEGER, primaryKey: true, autoIncrement: true},
+        name: {type: sequelize.TEXT, notNull: true},
+        coverage: {type: sequelize.BLOB, notNull: true, unique: true},
+        URL: {type: sequelize.TEXT},
+        expirationDate: {type: sequelize.TEXT},
+        updateInterval: {type: sequelize.INTEGER, defaultValue: 600},
+        lastUpdated: {type: sequelize.DATE},
+        addedDate: {type: sequelize.DATE, notNull: true},
+        averageRuntime: {type: sequelize.TEXT}
+    }, {timestamps: false});
+
+    api.db.taskstats = api.db.define('taskstats', {
+        timestamp: {type: sequelize.TEXT, primaryKey: true},
+        taskID: {type: sequelize.INTEGER, notNull: true},
+        timing: {type: sequelize.INTEGER, notNull: true}
+    }, {timestamps: false});
+
+    api.db.users = api.db.define('users', {
+        name: {type: sequelize.TEXT, primaryKey: true, unique: {msg: "Username already taken."}},
+        email: {type: sequelize.TEXT, notNull: true, unique: {msg: 'This email is already taken.'},
+				validate: { isEmail: { msg: 'Email address must be valid.' } } },
+        role: {type: sequelize.TEXT, notNull: true},
+        apikey: {type: sequelize.TEXT, notNull: true},
+        approved: {type: sequelize.BOOLEAN, defaultValue: false},
+        signupDate: {type: sequelize.DATE, notNull: true}
+    }, {timestamps: false});
+
+    api.db.tasks.belongsTo(api.db.users, {as: "author"});
+
+    api.db.sync().then(() => {
+        // if no admin present, add one and log credentials
+        api.db.users.findAll({
+            where: { role: "admin" }
+        }).then(role => {
+            if (role.length == 0) {
+                api.db.users.create({
+                    name: "admin",
+                    role: "admin",
+                    email: "admin@admin.com",
+                    apikey: config.api.adminkey,
+                    approved: true,
+                    signupDate: new Date().toISOString()
+                }).then(admin => {
+                    log.notice("No admin account found, created one." +
+                        "Please change default admin password!", admin.dataValues);
+                }).catch(err => {
+                    // error handling
+                    log.error("POST user; Cannot create admin role:" + err);
+                });
+            }
+        });
+    }).catch(err => log.critical(`Cannot initialize database. Error message: ${err}`));
+
 
     //
     /// serve website
@@ -187,18 +236,19 @@ function api(customconfig) {
     api.use('/data', express.static(api.dataDirectory));
 
 
-    //
+    ////
     /// API Implementation
     //
     api.use(function(req, res, next) {
         // enable CORS
         res.header("Access-Control-Allow-Origin", "*");
-        res.header("Access-Control-Allow-Headers",
-            "Origin, X-Requested-With, Content-Type, Accept");
+        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
         next();
     });
 
-    api.get('/api/tasks', function (req, res) {
+    /// task handling
+    //
+    api.get('/api/tasks', checkUserRole, function (req, res) {
         // responds with an array of all tasks
         if(req.query.name) {
             res.redirect('/tasks/name='+req.query.name);
@@ -209,66 +259,103 @@ function api(customconfig) {
             return;
         }
         log.info("GET /tasks");
-        let SQLselect = api.db.prepare("SELECT * FROM tasks;");
-        log.debug("GET tasks; SQL statement to be run:", SQLselect);
-        SQLselect.all(function (err, tasks) {
-            if(err) res.status(500).send("Error retrieving tasks from the database.");
+
+        api.db.tasks.findAll().then(tasks => {
             tasks.map(obj => {
                 obj.coverage = JSON.parse(obj.coverage);
+                // mask author if not admin
+                if (req.role != "admin")
+                    obj.authorName = "";
+                    log.debug("get all tasks: obj:", obj.dataValues);
                 return obj;
             });
             res.json(tasks);
+            return;
+        }).catch(err => {
+            res.status(500).send(`Error retrieving tasks from the database: ${err}`);
+            return;
         });
     });
 
     api.get(['/api/tasks/name=:name'], function (req, res) {
         // responds with the task whose name matches the one given
         log.info("/tasks/name=:name, params:", req.params);
-        let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ?", req.params.name);
-        log.debug("GET tasks; SQL statement to be run:", SQLselect,
-            "\nParameter:", req.params.name);
-        SQLselect.all(function (err, tasks) {
-            if(err) res.status(500).send("Error retrieving tasks from the database.");
+        api.db.tasks.findAll({
+            where: {
+                name: req.params.name
+            }
+        }).then(tasks => {
             tasks.map(obj => {
                 obj.coverage = JSON.parse(obj.coverage);
+                // mask author if not admin
+                if (req.role != "admin")
+                    obj.authorName = "";
                 return obj;
             });
             res.json(tasks);
+            return;
+        }).catch(err => {
+            log.error(`Error retrieving tasks from the database: ${err}`);
+            res.status(500).send(`Error retrieving tasks from the database: ${err}`);
+            return;
         });
     });
 
     api.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
         // responds with the task whose id matches the one given
         log.info("/tasks/id=:id, params:", req.params);
-        let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE id == ?", req.params.id);
-        log.debug("GET tasks; SQL statement to be run:", SQLselect,
-            "\nParameter:", req.params.id);
-        SQLselect.all(function (err, tasks) {
-            if(err) res.status(500).send("Error retrieving task from the database." +
-                                         err);
+        api.db.tasks.findAll({
+            where: {
+                id: req.params.id
+            }
+        }).then(tasks => {
             tasks.map(obj => {
                 obj.coverage = JSON.parse(obj.coverage);
+                // mask author if not admin
+                if (req.role != "admin")
+                    obj.authorName = "";
                 return obj;
             });
             res.json(tasks);
+            return;
+        }).catch(err => {
+            log.error(`Error retrieving tasks from the database: ${err}`);
+            res.status(500).send(`Error retrieving tasks from the database: ${err}`);
+            return;
         });
     });
 
-    api.delete('/api/tasks', function (req, res) {
-        let SQLdelete = api.db.prepare("DELETE FROM tasks WHERE id == ?", req.body.id);
-        log.info("DELETE tasks; SQL statement to be run:", SQLdelete,
-            "\nParameter:", req.body.id);
-        SQLdelete.run(function (err) {
-            if(err) {
-                log.error("SQL error:", err);
-                res.status(500).send("Error retrieving tasks from the database.");
-            }
-            res.status(200).send("Succesfully deleted task with ID=" + req.body.id);
-        });
+    api.delete('/api/tasks', checkUserRole, function (req, res) {
+        log.info("DELETE tasks; ", req.body.id);
+        if (req.role == "user" || req.role == "admin") {
+            api.db.tasks.destroy({
+                where: {
+                    id: req.body.id
+                }
+            }).then(() => {
+                res.status(200).send("Succesfully deleted task with ID=" + req.body.id);
+                return;
+            }).catch(err => {
+                log.error(`Error deleting tasks from the database: ${err}`);
+                res.status(500).send(`Error deleting task from the database: ${err}`);
+                return;
+            });
+        } else {
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
+                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            return;
+        }
     });
 
-    api.post('/api/tasks', function (req, res) {
+    api.post('/api/tasks', checkUserRole, function (req, res) {
         // tries to add a task to the database, validates input
+
+        // valid api key check
+        if (req.role != "admin" && req.role != "user") {
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
+                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            return;
+        }
 
         // validation
         let errorlist = [];
@@ -361,60 +448,32 @@ function api(customconfig) {
             return;
         }
         else {
-            // insert new task into database, sorry for callback hell,
-            // can't think of another way to serialize. db.serialize did not work.
-            let SQLinsert = api.db.prepare(
-                "INSERT INTO tasks (name, coverage, expirationDate, addedDate," +
-                "updateInterval) VALUES (?, ?, ?, ?, ?);",
-                name, JSON.stringify(coverage), expirationDate,
-                new Date().toISOString(), updateInterval);
-            log.info("POST task; SQL for insertion:", SQLinsert,
+            // insert new task into database
+            log.info("POST task.",
                 "\nParameters:", {name: name, coverage: coverage,
-                    expirationdate: expirationDate, creationdate: new Date().toISOString(),
+                    expirationdate: expirationDate, addedDate: new Date().toISOString(),
                     updateInterval: updateInterval});
-            SQLinsert.run(function getID(err) {
-                if(err) {
-                    log.error("SQL error:", err);
-                    res.status(500).send("POST task; Error inserting task:" + err);
+            api.db.tasks.create({
+                name: name,
+                coverage: JSON.stringify(coverage),
+                expirationDate: expirationDate,
+                addedDate: new Date().toISOString(),
+                updateInterval: updateInterval
+            }).then(task => {
+                // set author
+                task.setAuthor(req.user);
+                // update url
+                task.update({
+                    URL: api.dataDirectory + task.id + "_" + task.name + ".osm.pbf"
+                }).then(task => {
+                    res.json(task);
                     return;
-                }
-                // get id
-                let id;
-                let SQLselect = api.db.prepare("SELECT * FROM tasks WHERE name == ? AND " +
-                    "coverage == ?", name, JSON.stringify(coverage));
-                SQLselect.all(function updateURL(err, rows) {
-                    if(err) {
-                        log.error("SQL error:", err);
-                        res.status(500).send("POST task; Error retrieving id " +
-                            "from database after insertion. Can't generate URL.");
-                        return;
-                    }
-                    log.debug("GET id for generating url. Result:", rows);
-                    if(rows && rows.length === 1) {
-                        id = rows[0].id;
-                    } else {
-                        res.status(500).send("POST task; Error retrieving id " +
-                            "from database after insertion. Can't generate URL.");
-                        return;
-                    }
-                    // generate and update URL
-                    let url = api.dataDirectory + id + "_" + name + ".osm.pbf";
-                    let SQLupdate = api.db.prepare("UPDATE tasks SET URL = ? WHERE id = ?",
-                        url, id);
-                    log.debug("POST task; SQL for updating URL:", SQLupdate,
-                        "\nParameters:", url, id);
-                    SQLupdate.run(function(err) {
-                        if(err) {
-                            log.error("SQL error:", err);
-                            res.status(500).send("POST task; Error updating task url:" + err);
-                            return;
-                        }
-                        // update URL in local variable
-                        rows[0].URL = url;
-                        rows[0].coverage = JSON.parse(rows[0].coverage);
-                        res.json(rows[0]);
-                    });
                 });
+            }).catch(err => {
+                // error handling
+                log.error("POST task; Error inserting task:" + err);
+                res.status(500).send("POST task; Error inserting task:" + err);
+                return;
             });
         }
     });
@@ -422,13 +481,248 @@ function api(customconfig) {
     api.get('/api/taskstats', function (req, res) {
         // responds with an array of all task statistics
         log.info("GET /taskstats");
-        let SQLselect = api.db.prepare("SELECT * FROM taskstats;");
-        log.debug("GET taskstats; SQL statement to be run:", SQLselect);
-        SQLselect.all(function (err, taskstats) {
-            if(err) res.status(500).send("Error retrieving tasks from the database.");
+        api.db.taskstats.findAll().then(taskstats => {
             res.json(taskstats);
+            return;
+        }).catch(err => {
+            res.status(500).send(`Error retrieving taskstats from the database: ${err}`);
+            return;
         });
     });
+
+    /// user handling
+    //
+    function checkUserRole(req, res, next) {
+        // check for API key and matching role
+        log.debug("checkUserRole:", "\nreq.route.methods", req.route.methods,
+                  "\nreq.route.path", req.route.path, "\nreq.body", req.body,
+            "\nreq.params", req.params, "\nreq.query", req.query);
+        let key = req.body.apikey || req.params.apikey || req.query.apikey;
+        if(key) {
+            api.db.users.findAll({
+                where: {
+                    apikey: key
+                }
+            }).then(user => {
+                if(user.length > 1) {
+                    res.status(500).send("Error, multiple API keys match. Contact admin.");
+                    return next();
+                } else {
+                    if (user.length == 1) {
+                        if (user[0].approved) {
+                            req.role = user[0].role;
+                            req.user = user[0];
+                            log.debug("req.role:", req.role);
+                        } else {
+							res.status(403).send("Access forbidden. API key has not been approved yet.");
+							return;
+						}
+                    } else {
+                        req.role = undefined;
+                    }
+                    return next();
+                }
+            }).catch(err => {
+                res.status(500).send(`Error authenticating api key: ${err}`);
+                return next();
+            });
+        } else {
+            req.role = undefined;
+            return next();
+        }
+    }
+
+    api.get('/api/users/', checkUserRole, function (req, res) {
+        // responds with an array of all users
+        if(req.query.name) {
+            res.redirect('/users/name='+req.query.name);
+            return;
+        }
+        log.info("GET /users");
+
+        if (req.role == "admin") {
+            // fetch users and send results
+            api.db.users.findAll().then(users => {
+                res.json(users);
+                return;
+            }).catch(err => {
+                res.status(500).send(`Error retrieving users from the database: ${err}`);
+                return;
+            });
+        } else {
+            if (req.role == "user") {
+                res.status(403).send('Access forbidden. Need admin key. Contact: info@heigit.org');
+                return;
+            } else {
+                res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
+                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+                return;
+            }
+        }
+    });
+
+    api.get(['/api/users/name=:name'], checkUserRole, function (req, res) {
+        // responds with the user whose name matches the one given
+        log.info("/users/name=:name, params:", req.params);
+        if (req.role == "admin") {
+            // fetch users and send results
+            api.db.users.findAll({
+                where: {
+                    name: req.params.name
+                }
+            }).then(users => {
+                res.json(users);
+                return;
+            }).catch(err => {
+                res.status(500).send(`Error retrieving users from the database: ${err}`);
+                return;
+            });
+        } else {
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
+                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            return;
+        }
+    });
+
+    // add a user
+    api.post('/api/users', checkUserRole, function (req, res) {
+        // tries to add a user to the database
+        log.debug("Adding user: req.body", req.body);
+
+        // validation
+        let name = req.body.name;
+        if (req.body.role === "admin" && req.role !== "admin") {
+            res.status(403).send("Access restricted. Provide admin API key to add admin user.");
+            return;
+        }
+        let role;
+        if(req.body.role) {
+            role = req.body.role;
+        }
+        else {
+            role = "user";
+        }
+        // no five-lines regex check, trust on sequelize.js to prevent sql injection
+        let email = req.body.email;
+        let approved;
+        // generate 32 bit api key
+        let apikey = crypto.randomBytes(32).toString("base64");
+        // replace + with = to avoid URL encoding issues
+        apikey = apikey.replace("+", "=");
+        if (req.role == "admin") {
+            approved = true;
+        } else {
+            approved = false;
+        }
+
+        let errorlist = [];
+        if (!name || name.match(/^[a-zA-Z0-9_]+$/) === null)
+            errorlist.push("name [a-zA-Z0-9_]");
+
+        if (!role || role.match(/(^user$|^admin$)/) === null)
+            errorlist.push("role ['user' or 'admin']");
+
+        if(errorlist.length > 0) {
+            res.status(400).send("Error adding user. Invalid parameters: " +
+                errorlist.join(", "));
+            return;
+        }
+        else {
+            // insert new user into database
+            log.info("POST user.",
+                "\nParameters:", {name: name, role: role, approved: approved,
+                    signupDate: new Date().toISOString()});
+            api.db.users.create({
+                name: name,
+                role: role,
+                email: email,
+                apikey: apikey,
+                approved: approved,
+                signupDate: new Date().toISOString()
+            }).then(user => {
+                res.json(user);
+                // todo send mail to new user ?
+                return;
+            }).catch(err => {
+                // error handling
+                log.warning("POST user; Error inserting user: " + err);
+                res.status(500).send("Error adding user: " + err.message);
+                return;
+            });
+        }
+    });
+
+    // approve a user
+    api.get(['/api/users/approve/'], checkUserRole, function (req, res) {
+        // approve a user by name
+        log.info("GET /users/approve/, query:", req.query);
+        if (req.role == "admin") {
+            api.db.users.update({approved: true}, {
+                where: { name: req.query.name }
+            }).then(() => {
+                res.status(200).send("Successfully approved user with name=" + req.query.name);
+                // todo send mail to approved user ?
+                return;
+            }).catch(err => {
+                log.error(`Error approving user: ${err}`);
+                res.status(500).send(`Error approving user: ${err}`);
+                return;
+            });
+        } else {
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
+                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            return;
+        }
+    });
+
+    // delete a user
+    api.delete('/api/users', checkUserRole, function (req, res) {
+        log.info("DELETE users; ", req.body.name);
+        if (req.role == "admin") {
+            api.db.users.destroy({
+                where: {
+                    name: req.body.name
+                }
+            }).then(() => {
+                res.status(200).send("Successfully deleted user with name=" + req.body.name);
+                return;
+            }).catch(err => {
+                log.error(`Error deleting user from the database: ${err}`);
+                res.status(500).send(`Error deleting user from the database: ${err}`);
+                return;
+            });
+        } else {
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
+                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            return;
+        }
+    });
+
+    // backups
+    api.backupSQliteDB = function () {
+        // backup database
+        let backuppath = "./backups/" + config.api.database + "." + (new Date()).toISOString() + ".bak";
+        // check if database exists
+        if (fs.existsSync(config.api.database)) {
+            if (!fs.existsSync("./backups/")){
+                fs.mkdirSync("./backups/");
+            }
+            fs.copyFile(config.api.database, backuppath, (err) => {
+                if(err) {
+                    log.error("Could not create backup of database, error:", err);
+                } else {
+                    log.info("Created new backup at", backuppath);
+                }
+            });
+        } else {
+            log.info("Cannot backup database, file not found:", config.api.database);
+        }
+    };
+
+    // create initial backup
+    api.backupSQliteDB();
+    // set backup timer
+    setInterval(api.backupSQliteDB, config.api.backupInterval * 1000 * 60);
 
     return api;
 }

@@ -22,7 +22,10 @@ const config = {
     api: {
         port: 1234,
         accesslog: "./test/testaccess.log",
-        taskdb: "./test/test.db",
+        database: "./test/test.db",
+        adminkey: "masterpassword",
+        // backup interval in minutes, default: daily
+        backupInterval: 1440,
         // directory where osm data is stored and served
         dataDirectory: "./test/testdata/",
     }
