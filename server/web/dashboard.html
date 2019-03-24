@@ -21,26 +21,39 @@
 
 <div id='container'>
 
-<h1>Real-time OSM task manager</h1>
-
-<div id='flexrow'>
-    <div id='sidebar'>
-        <div id='tasklist'>
-            <table id="table" class="display"></table>
+    <div id='header'>
+        <h1>Real-time OSM task manager</h1>
+        <div>
+            <label>
+                API Key
+                <input type=text id=inputAPIkey name=apikey placeholder="Your API Key">
+            </label>
         </div>
-        <button id=addButton name="button">Add Task</button>
-        <button id=deleteButton name="button" disabled>Delete Task</button>
     </div>
-	<div id='map'> </div>
-    <div id="popup" class="ol-popup">
-        <a href="#" id="popup-closer" class="ol-popup-closer"></a>
-        <div id="popup-content"></div>
+
+    <div id='flexrow'>
+        <div id='sidebar'>
+            <div id='tasklist'>
+                <table id="table" class="display compact"></table>
+            </div>
+            <button id=addButton name="button">Add Task</button>
+            <button id=deleteButton name="button" disabled>Delete Task</button>
+        </div>
+        <div id='map'> </div>
+        <div id="popup" class="ol-popup">
+            <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+            <div id="popup-content"></div>
+        </div>
     </div>
-</div>
 
-<a href="/api/tasks" class=footerlink>Get all tasks as JSON</a>
+    <a href="/index.html" id="indexlink" class=footerlink>Return to main page.</a>
 
-<a href="/data" class=footerlink>Get data</a>
+    <a href="/usermanagement.html" id=usermanagementlink class=footerlink>User management</a>
+
+    <a href="/api/tasks" class=footerlink>Get all tasks as JSON</a>
+
+    <a href="/data" class=footerlink>Get data</a>
+
 
 </div>
 </body>

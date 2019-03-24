@@ -1,0 +1,47 @@
+body, p {
+    font-family: sans-serif;
+}
+/* change cursor to pointer on table */
+td {
+    cursor: pointer;
+}
+a, a:active {
+    color: black;
+    text-decoration: none;
+    border-bottom: 1px gray dotted;
+}
+#container{
+    max-width: 98%;
+    margin: 0 auto; /* center content */
+}
+#inputAPIkey {
+    width: 25em;
+}
+#tablediv {
+    display: none;
+    max-width: 1300px;
+}
+#errorinfo {
+    color: red;
+}
+#addUserForm {
+    margin: 3em 0px;
+}
+#addButton {
+    margin: 1em 0px;
+}
+.inputLabel {
+    margin: .5em .5em .5em 0px;
+    display: inline-block;
+}
+.inputLabel p {
+    width: 4em;
+    display: inline-block;
+}
+.inputText {
+    width: 10em;
+}
+.footerlink {
+    margin-bottom: 1em;
+    margin-right: 1em;
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+
+<head>
+<meta charset='utf-8'>
+<title>Real-time OSM API key signup</title>
+
+<link rel="stylesheet" type="text/css" href="./signup.css">
+<script src='./signup.js'></script>
+
+</head>
+
+<body onload='init()'>
+
+<div id='container'>
+
+    <div id='header'>
+        <h1>Real-time OSM API key signup</h1>
+    </div>
+
+    <form id="signupForm">
+        <label class=inputLabel>
+            <p>Name:</p> <input type=text id=inputName class=inputText required>
+        </label>
+        <label class=inputLabel>
+            <p>E-Mail:</p> <input type=text id=inputEmail class=inputText required>
+        </label>
+
+        <button type="submit" id=signupButton name="button">Request API Key</button>
+    </form>
+
+    <p id='errorinfo'></p>
+    
+    <a href="/index.html" id="indexlink" class=footerlink>Return to main page.</a>
+</div>
+</body>
+</html>

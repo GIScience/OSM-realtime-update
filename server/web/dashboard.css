@@ -3,7 +3,6 @@
 }
 body, p {
     font-family: sans-serif;
-    font-size: 11pt;
 }
 td {
     cursor: pointer;
@@ -16,6 +15,15 @@ a, a:active {
 #container{ 
     max-width: 98%;
     margin: 0 auto; /* Zentriert Inhalt */
+}
+#header {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: baseline;
+    justify-content: space-between;
+}
+#inputAPIkey {
+    width: 25em;
 }
 #flexrow{
     display: flex;
@@ -34,7 +42,7 @@ a, a:active {
 .footerlink {
     float: right;
     margin-bottom: 1em;
-    margin-right: .5em;
+    margin-right: 1em;
 }
 .ol-popup {
     position: absolute;

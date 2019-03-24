@@ -1,11 +1,33 @@
-/* global ol */
+/* globals */
 var map;
+var ol;
+var apikey;
 var tasksLayer;
 var tasksTmpLayer;
 var selectInteraction;
 var drawInteraction;
 
 function init() { // eslint-disable-line no-unused-vars
+    // fill api key input and change user management link if API key supplied
+    var url = new URL(window.location.href);
+    apikey = url.searchParams.get("apikey");
+    var apikeyInput = document.getElementById('inputAPIkey');
+    if(apikey) {
+        apikeyInput.value = apikey;
+        document.getElementById('usermanagementlink').href = "./usermanagement.html?apikey=" + apikey;
+    }
+
+    // listen to changes in the API key input and change parameters accordingly
+    apikeyInput.oninput = function() {
+        // change user management link
+        document.getElementById('usermanagementlink').href = "./usermanagement.html?apikey=" + apikeyInput.value;
+        // change url
+        var params = new URLSearchParams(url.search);
+        params.set('apikey', apikeyInput.value);
+        url.search = params.toString();
+        window.history.pushState(undefined, "", url.toString());
+    };
+
     // add map
 	map = new ol.Map({
 		target : 'map',
@@ -13,9 +35,9 @@ function init() { // eslint-disable-line no-unused-vars
 		view   : new ol.View({
 			projection : 'EPSG:3857',
 			center     : ol.proj.transform([0, 0], 'EPSG:4326', 'EPSG:3857'),
-			zoom       : 2
+			zoom       : 3
 			}),
-		layers : [ 
+		layers : [
 			new ol.layer.Tile({
                 source : new ol.source.Stamen({layer: "terrain"}),
 			}),
@@ -25,7 +47,7 @@ function init() { // eslint-disable-line no-unused-vars
                     format: new ol.format.GeoJSON(),
                     loader : function() {
                         var xhr = new XMLHttpRequest();
-                        xhr.open("GET", "/api/tasks");
+                        xhr.open("GET", "/api/tasks?apikey="+apikey);
                         xhr.setRequestHeader("Content-type", "application/JSON");
                         xhr.onload = function(){
                             if(xhr.status != 200) {
@@ -104,23 +126,24 @@ function init() { // eslint-disable-line no-unused-vars
         }
     });
 
-    // handle delete button 
+    // handle delete button
     deleteBtn.addEventListener('click', handleDeleteButtonClick);
 
     // create table
     var tasks = tasksLayer.getSource().getFeatures();
     var table = $('#table').DataTable( {
         data: tasks,
+        responsive: true,
         rowId: "getId()",
         select: {style: 'single', info: false},
-        scrollX: true,
         scrollY: false,
         lengthChange: false,
         // custom column definitions
-        columns: 
+        columns:
             [{ data: task => task.getId(), title: "ID"},
              { data: task => task.getProperties().name, title: "Name", className: "dt-left"},
              { data: task => task.getProperties().URL, title: "URL", className: "dt-left"},
+             { data: task => task.getProperties().authorName, title: "Author", className: "dt-left"},
              { data: task => {
                  let data = task.getProperties().expirationDate;
                  if(data !== null) {
@@ -133,7 +156,7 @@ function init() { // eslint-disable-line no-unused-vars
                      return data.substring(0, 19).split("T").join("\n");
                  } else return '';
                }, title: "added", className: "dt-left"},
-             { data: task => task.getProperties().updateInterval/60, 
+             { data: task => task.getProperties().updateInterval/60,
                  title: "update interval [min]", className: "dt-left"},
              { data: task => {
                  let data = task.getProperties().lastUpdated;
@@ -191,10 +214,16 @@ function init() { // eslint-disable-line no-unused-vars
         deselectFeature(tasksLayer.selectedFeature);
 		return false;
 	};
+
+    // readjust table columns
+    table.columns.adjust().draw();
+    // readjust columns on resize
+    //window.onresize = setTimeout(table.columns.adjust().draw(), 200);
 }
 
 function handleDeleteButtonClick() {
     var deleteBtn = document.getElementById('deleteButton');
+    var apikey = document.getElementById('inputAPIkey').value;
     // delete xhr request to api
     var xhr = new XMLHttpRequest();
     xhr.open("DELETE", "/api/tasks");
@@ -206,7 +235,7 @@ function handleDeleteButtonClick() {
             // enable button to allow resend
         }
     };
-    xhr.send(JSON.stringify({id: tasksLayer.selectedFeature.getId()}));
+    xhr.send(JSON.stringify({id: tasksLayer.selectedFeature.getId(), apikey}));
     // remove popup
     var popupOverlay = map.getOverlays().item(0);
     var popupCloser = document.getElementById('popup-closer');
@@ -215,7 +244,7 @@ function handleDeleteButtonClick() {
     // remove feature from map
     tasksTmpLayer.getSource().clear();
     deselectFeature(tasksLayer.selectedFeature);
-    // refresh data source and disable delete button, 
+    // refresh data source and disable delete button,
     // assuming no task is selected after refresh.
     tasksLayer.getSource().clear();
     deleteBtn.setAttribute("disabled", "disabled");
@@ -242,12 +271,12 @@ function handleDrawEnd(e) {
     var popupContent = `
         <h3 class=popupTitel>New task</h3>
         <form onsubmit="return handleTaskSubmit()">
-            <label for=titel class=inputLabel>Name:</label>
+            <label for=name class=inputLabel>Name:</label>
             <input type=text id=inputName class=inputText name=name required>
             <label for="expirationDate" class=inputLabel>Expires:</label>
             <input type=text id=inputExpires class=inputDate name=expirationDate>
             <label for=updateInterval class=inputLabel>Update interval in minutes:</label>
-            <input type=number id=inputUpdateInterval class=inputNumber 
+            <input type=number id=inputUpdateInterval class=inputNumber
                    name=updateInterval value=5>
             <button type="submit" id=submitButton class=popupSubmit>Save task</button>
         </form>
@@ -262,6 +291,7 @@ function handleDrawEnd(e) {
 
 function handleTaskSubmit() { // eslint-disable-line no-unused-vars
     // submits new report to API, triggered by submit button
+    var apikey = document.getElementById('inputAPIkey').value;
     var name = document.getElementById('inputName').value;
     var expirationDate = document.getElementById('inputExpires').value;
     var updateInterval = document.getElementById('inputUpdateInterval').value*60;
@@ -273,7 +303,7 @@ function handleTaskSubmit() { // eslint-disable-line no-unused-vars
     var coverage = featureGeoJSON;
     var submitBtn = document.getElementById('submitButton');
     // safety check for large areas
-    if(feature.getGeometry().getArea()/1000000 > 10000 && 
+    if(feature.getGeometry().getArea()/1000000 > 10000 &&
        submitBtn.innerHTML == "Save task") {
         var responseText = document.getElementById('responseText');
         responseText.innerHTML = "Task area exceeds 10000km²! Really submit?";
@@ -315,7 +345,7 @@ function handleTaskSubmit() { // eslint-disable-line no-unused-vars
             }
         };
         // send POST request
-        xhr.send(JSON.stringify({name, coverage, expirationDate, updateInterval}));
+        xhr.send(JSON.stringify({name, coverage, expirationDate, updateInterval, apikey}));
         // disable submit button
         submitBtn.setAttribute("disabled", "disabled");
     }

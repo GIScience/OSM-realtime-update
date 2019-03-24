@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+
+<head>
+<meta charset='utf-8'>
+<title>Real-time OSM user manager</title>
+
+<link rel="stylesheet" type="text/css" href="./usermanagement.css">
+<link rel="stylesheet" type="text/css" href="./lib/DataTables/datatables.css">
+<link rel="stylesheet" type="text/css" href="./lib/jquery-ui-1.12.1/jquery-ui.min.css">
+
+<script src='./lib/DataTables/datatables.min.js'></script>
+<script src='./lib/jquery-ui-1.12.1/jquery-ui.min.js'></script>
+<script src='./usermanagement.js'></script>
+
+</head>
+
+<body onload='init()'>
+
+<div id='container'>
+
+    <div id='header'>
+        <h1>Real-time OSM user manager</h1>
+        <label class=inputLabel>
+            <p>API Key</p>
+            <input type=text id=inputAPIkey name=apikey placeholder="Your API Key">
+        </label>
+        <p id='errorinfo'></p>
+    </div>
+
+    <div id='tablediv'>
+        <div id='userlist'>
+            <table id="table" class="display"></table>
+        </div>
+
+        <button id=deleteButton name="button" disabled>Delete User</button>
+        <button id=approveButton name="button" disabled>Approve User</button>
+
+        <form id="addUserForm">
+            <h3>Add user</h3>
+            <label class=inputLabel>
+                <p>Name:</p> <input type=text id=inputName class=inputText required>
+            </label>
+            <label class=inputLabel>
+                <p>E-Mail:</p> <input type=text id=inputEmail class=inputText required>
+            </label>
+            <label class=inputLabel>
+                <p>Role:</p> <input type=text id=inputRole class=inputText required>
+            </label>
+
+            <button type="submit" id=addButton name="button">Add User</button>
+        </form>
+
+        <p><a href="/api/users" id="getuserslink" class=footerlink>Get all users as JSON</a></p>
+    </div>
+
+    <a href="/index.html" id="indexlink" class=footerlink>Return to main page.</a>
+
+    <a href="/dashboard.html" id="dashboardlink" class=footerlink>Return to dashboard.</a>
+</div>
+</body>
+</html>
