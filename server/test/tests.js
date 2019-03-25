@@ -22,12 +22,14 @@ let testtasks = [
                 [ 8.71600575875319, 49.4402451419453 ],
                 [ 8.65283437203444, 49.43935216405316 ] ] ],
         },
+        authorName: "admin",
         expirationDate: '',
         updateInterval: 10,
     },
     {
         name: 'TogoTest',
         comment: 'Task with geofabrikRegion string',
+        authorName: "admin",
         coverage: 'togo',
         expirationDate: '',
         updateInterval: 15,
@@ -35,6 +37,7 @@ let testtasks = [
     {
         name: 'ManchesterTest',
         comment: 'Task with missing CRS in coverage GeoJSON.',
+        authorName: "admin",
         coverage:
         { type: 'Feature',
             geometry:
@@ -50,8 +53,10 @@ let testtasks = [
         expirationDate: '',
         updateInterval: 10,
     },
-    { name: 'TsuruokaTest',
+    {
+        name: 'TsuruokaTest',
         comment: 'Optimal task',
+        authorName: "admin",
         coverage:
         { type: 'Feature',
             geometry:
@@ -70,6 +75,7 @@ let testtasks = [
     {
         name: 'LeipzigTest',
         comment: 'Task with expiration date',
+        authorName: "admin",
         coverage:
         { type: 'Feature',
             geometry:
@@ -91,7 +97,7 @@ let testtasks = [
 let testusers = [
     {
         name: "admin",
-        email:"",
+        email:"admin@admin.com",
         role:"admin"
     },
     {
@@ -104,7 +110,7 @@ let testusers = [
         name: "GrandpaRick",
         comment: "User has no mail",
         role: "user",
-        email: ""
+        email: "grandpa@rick.com"
     },
     {
         name: "AverageAdmin",
@@ -152,6 +158,7 @@ let testfun = {
             let commandstring = `curl --data 'name=${task.name}&` +
                 `coverage=${JSON.stringify(task.coverage)}&` +
                 `updateInterval=${task.updateInterval}&` +
+                `apikey=masterpassword&` +
                 `expirationDate=${task.expirationDate}' ` +
                 `http://localhost:1234/api/tasks`;
             const curl = child.execSync(commandstring, {stdio: "pipe"});
@@ -181,7 +188,7 @@ let testfun = {
             // deep clone
             let task = JSON.parse(JSON.stringify(testtask));
             task = makeTaskComparable(task);
-            let commandstring = `curl http://localhost:1234/api/tasks/name=${task.name}`;
+            let commandstring = `curl 'http://localhost:1234/api/tasks/name=${task.name}?apikey=masterpassword'`;
             const curl = child.execSync(commandstring, {stdio: "pipe"});
             let response;
             try{
@@ -262,7 +269,7 @@ let testfun = {
             // deep clone
             let users = JSON.parse(JSON.stringify(testusers));
             users = users.map(user => makeUserComparable(user));
-            let commandstring = `curl http://localhost:1234/api/users?apikey=masterpassword`;
+            let commandstring = `curl 'http://localhost:1234/api/users/?apikey=masterpassword'`;
             const curl = child.execSync(commandstring, {stdio: "pipe"});
             let response;
             try{
@@ -287,22 +294,22 @@ let testfun = {
                 role: "user",
                 email: "disapproved@odysseus.com"
             };
-            let curlstring = `curl --data 'name=${user.name}&` +
+            let postcurlstring = `curl --data 'name=${user.name}&` +
                 `email=${user.email}&` +
                 `role=${user.role}' ` +
                 `http://localhost:1234/api/users`;
-            const postcurl = child.execSync(curlstring, {stdio: "pipe"});
+            const postcurl = child.execSync(postcurlstring, {stdio: "pipe"});
             let response = postcurl.toString();
             // approve user
-            curlstring = `curl http://localhost:1234/api/users/approve/name=${user.name}?apikey=masterpassword`;
-            const approvecurl = child.execSync(curlstring, {stdio: "pipe"});
+            let approvecurlstring = "curl 'http://localhost:1234/api/users/approve/" +
+                `?name=${user.name}&apikey=masterpassword'`;
+            const approvecurl = child.execSync(approvecurlstring, {stdio: "pipe"});
             response = approvecurl.toString();
-            assert(response === "Successfully approved user with name=" + user.name,
+            assert(response == "Successfully approved user with name=" + user.name,
                    `APPROVE not successfull, response: ${response}`);
             // test if APPROVE really was successfull
-            curlstring = `curl http://localhost:1234/api/users/` +
-                         `name=${user.name}?apikey=masterpassword`;
-            const namecurl = child.execSync(curlstring, {stdio: "pipe"});
+            let getcurlstring = `curl 'http://localhost:1234/api/users/name=${user.name}?apikey=masterpassword'`;
+            const namecurl = child.execSync(getcurlstring, {stdio: "pipe"});
             try{
                 response = JSON.parse(namecurl.toString())[0];
             } catch (err) {
@@ -326,7 +333,7 @@ let testfun = {
                 assert(response === "Successfully deleted user with name=" + user.name,
                        `DELETE not successfull, response: ${response}`);
                 // test if DELETE really was successfull
-                curlstring = `curl http://localhost:1234/api/users/` +
+                curlstring = `curl 'http://localhost:1234/api/users/'` +
                              `name=${user.name}?apikey=masterpassword`;
                 const namecurl = child.execSync(curlstring, {stdio: "pipe"});
                 try{
@@ -343,7 +350,7 @@ let testfun = {
             // deep clone
             let tasks = JSON.parse(JSON.stringify(testtasks));
             tasks = tasks.map(task => makeTaskComparable(task));
-            let commandstring = `curl http://localhost:1234/api/tasks`;
+            let commandstring = `curl 'http://localhost:1234/api/tasks?apikey=masterpassword'`;
             const curl = child.execSync(commandstring, {stdio: "pipe"});
             let response;
             try{
@@ -367,13 +374,13 @@ let testfun = {
             tasks = tasks.filter(task => tasksForRemoval.includes(task.name));
             tasks.forEach(task => {
                 let curlstring = `curl --data "id=${task.id}" -X DELETE ` +
-                                 `http://localhost:1234/api/tasks`;
+                                 `http://localhost:1234/api/tasks?apikey=masterpassword`;
                 const deletecurl = child.execSync(curlstring, {stdio: "pipe"});
                 let response = deletecurl.toString();
                 assert(response === "Succesfully deleted task with ID=" + task.id,
                        `DELETE not successfull, response: ${response}`);
                 // test if DELETE really was successfull
-                curlstring = `curl http://localhost:1234/api/tasks/` +
+                curlstring = `curl 'http://localhost:1234/api/tasks/'` +
                              `name=${task.name}`;
                 const namecurl = child.execSync(curlstring, {stdio: "pipe"});
                 try{
@@ -397,7 +404,7 @@ let testfun = {
                 console.log(`Test: TaskExpiration for task ${task.name}.`,
                     `Countdown: ${countdown/1000}s`);
                 setTimeout(function() {
-                    let curlstring = `curl http://localhost:1234/api/tasks/` +
+                    let curlstring = `curl 'http://localhost:1234/api/tasks/'` +
                                      `name=${task.name}`;
                     const curl = child.execSync(curlstring, {stdio: "pipe"});
                     let response;
@@ -465,4 +472,4 @@ setTimeout(function() {
         server.kill();
         throw Error(err);
     }
-}, 3000);
+}, 2000);
