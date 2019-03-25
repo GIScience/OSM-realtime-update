@@ -217,7 +217,7 @@ function api(customconfig) {
                     approved: true,
                     signupDate: new Date().toISOString()
                 }).then(admin => {
-                    log.notice("No admin account found, created one." +
+                    log.notice("No admin account found, created one. " +
                         "Please change default admin password!", admin.dataValues);
                 }).catch(err => {
                     // error handling
@@ -231,9 +231,44 @@ function api(customconfig) {
     //
     /// serve website
     //
+
+    // throttling
+    // api.use(function(req, res, next) {
+    //     let bps = config.api.maxBandwidth;
+    //     if (bps > 0) {
+    //         var total = 0;
+    //         var resume = req.socket.resume;
+
+    //         // make sure nothing else can resume
+    //         req.socket.resume = function() {};
+
+    //         var pulse = setInterval(function() {
+    //             total = total - bps / 100;
+    //             if (total < bps) {
+    //                 resume.call(req.socket);
+    //             }
+    //         }, 10);
+
+    //         req.on('data', function(chunk) {
+    //             log.debug("chunk", chunk.length);
+    //             total += chunk.length;
+    //             if (total >= bps) {
+    //                 req.socket.pause();
+    //             }
+    //         }).on('end', function() {
+    //             clearInterval(pulse);
+    //             // restore resume because socket could be reused
+    //             req.socket.resume = resume;
+    //             // future requests need the socket to be flowing
+    //             req.socket.resume();
+    //         });
+    //     }
+    //     next();
+    // });
     api.use(express.static('./web/'));
     api.use('/data', serveIndex(api.dataDirectory, {icons: true, view: "details"}));
     api.use('/data', express.static(api.dataDirectory));
+
 
 
     ////
@@ -266,7 +301,6 @@ function api(customconfig) {
                 // mask author if not admin
                 if (req.role != "admin")
                     obj.authorName = "";
-                    log.debug("get all tasks: obj:", obj.dataValues);
                 return obj;
             });
             res.json(tasks);
@@ -277,7 +311,7 @@ function api(customconfig) {
         });
     });
 
-    api.get(['/api/tasks/name=:name'], function (req, res) {
+    api.get(['/api/tasks/name=:name'], checkUserRole, function (req, res) {
         // responds with the task whose name matches the one given
         log.info("/tasks/name=:name, params:", req.params);
         api.db.tasks.findAll({
@@ -341,8 +375,7 @@ function api(customconfig) {
                 return;
             });
         } else {
-            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
-                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key: info@heigit.org');
             return;
         }
     });
@@ -352,8 +385,7 @@ function api(customconfig) {
 
         // valid api key check
         if (req.role != "admin" && req.role != "user") {
-            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
-                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key: info@heigit.org');
             return;
         }
 
@@ -554,8 +586,7 @@ function api(customconfig) {
                 res.status(403).send('Access forbidden. Need admin key. Contact: info@heigit.org');
                 return;
             } else {
-                res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
-                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+                res.status(403).send('Access forbidden. Check API key validity. Request an API key: info@heigit.org');
                 return;
             }
         }
@@ -578,8 +609,7 @@ function api(customconfig) {
                 return;
             });
         } else {
-            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
-                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key: info@heigit.org');
             return;
         }
     });
@@ -656,6 +686,7 @@ function api(customconfig) {
     api.get(['/api/users/approve/'], checkUserRole, function (req, res) {
         // approve a user by name
         log.info("GET /users/approve/, query:", req.query);
+        console.log("req.role approve:", req.role);
         if (req.role == "admin") {
             api.db.users.update({approved: true}, {
                 where: { name: req.query.name }
@@ -669,8 +700,7 @@ function api(customconfig) {
                 return;
             });
         } else {
-            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
-                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key: info@heigit.org');
             return;
         }
     });
@@ -692,8 +722,7 @@ function api(customconfig) {
                 return;
             });
         } else {
-            res.status(403).send('Access forbidden. Check API key validity. Request an API key ' +
-                    '<a href="./signup.html">here</a> or contact: info@heigit.org');
+            res.status(403).send('Access forbidden. Check API key validity. Request an API key: info@heigit.org');
             return;
         }
     });
