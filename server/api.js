@@ -285,17 +285,14 @@ function api(customconfig) {
     //
     api.get('/api/tasks', checkUserRole, function (req, res) {
         // responds with an array of all tasks
-        if(req.query.name) {
-            res.redirect('/tasks/name='+req.query.name);
-            return;
-        }
-        if(req.query.id) {
-            res.redirect('/tasks/'+req.query.id);
-            return;
-        }
-        log.info("GET /tasks");
+        log.info("GET /api/tasks");
 
-        api.db.tasks.findAll().then(tasks => {
+        let whereClause = {};
+        if (req.query.id)
+            whereClause['id'] = req.query.id;
+        if (req.query.name)
+            whereClause['name'] = req.query.name;
+        api.db.tasks.findAll({ where: whereClause }).then(tasks => {
             tasks.map(obj => {
                 obj.coverage = JSON.parse(obj.coverage);
                 // mask author if not admin
@@ -311,33 +308,10 @@ function api(customconfig) {
         });
     });
 
-    api.get(['/api/tasks/name=:name'], checkUserRole, function (req, res) {
-        // responds with the task whose name matches the one given
-        log.info("/tasks/name=:name, params:", req.params);
-        api.db.tasks.findAll({
-            where: {
-                name: req.params.name
-            }
-        }).then(tasks => {
-            tasks.map(obj => {
-                obj.coverage = JSON.parse(obj.coverage);
-                // mask author if not admin
-                if (req.role != "admin")
-                    obj.authorName = "";
-                return obj;
-            });
-            res.json(tasks);
-            return;
-        }).catch(err => {
-            log.error(`Error retrieving tasks from the database: ${err}`);
-            res.status(500).send(`Error retrieving tasks from the database: ${err}`);
-            return;
-        });
-    });
 
-    api.get(['/api/tasks/id=:id', '/tasks/:id'], function (req, res) {
-        // responds with the task whose id matches the one given
-        log.info("/tasks/id=:id, params:", req.params);
+    api.get(['/api/tasks/:id'], function (req, res) {
+        // responds with a single task whose id matches the one given
+        log.info("/api/tasks/:id, params:", req.params);
         api.db.tasks.findAll({
             where: {
                 id: req.params.id
@@ -512,7 +486,7 @@ function api(customconfig) {
 
     api.get('/api/taskstats', function (req, res) {
         // responds with an array of all task statistics
-        log.info("GET /taskstats");
+        log.info("GET /api/taskstats");
         api.db.taskstats.findAll().then(taskstats => {
             res.json(taskstats);
             return;
@@ -564,17 +538,21 @@ function api(customconfig) {
         }
     }
 
-    api.get('/api/users/', checkUserRole, function (req, res) {
-        // responds with an array of all users
-        if(req.query.name) {
-            res.redirect('/users/name='+req.query.name);
-            return;
-        }
+    api.get(['/api/users/', '/api/users/:name'], checkUserRole, function (req, res) {
+        // responds with an array of all users matching the filter
         log.info("GET /users");
+
+        let whereClause = {};
+        if (req.query.id)
+            whereClause['id'] = req.query.id;
+        if (req.query.name || req.params.name)
+            whereClause['name'] = req.query.name || req.params.name;
+
+        debugger
 
         if (req.role == "admin") {
             // fetch users and send results
-            api.db.users.findAll().then(users => {
+            api.db.users.findAll({ where: whereClause }).then(users => {
                 res.json(users);
                 return;
             }).catch(err => {
@@ -589,28 +567,6 @@ function api(customconfig) {
                 res.status(403).send('Access forbidden. Check API key validity. Request an API key: info@heigit.org');
                 return;
             }
-        }
-    });
-
-    api.get(['/api/users/name=:name'], checkUserRole, function (req, res) {
-        // responds with the user whose name matches the one given
-        log.info("/users/name=:name, params:", req.params);
-        if (req.role == "admin") {
-            // fetch users and send results
-            api.db.users.findAll({
-                where: {
-                    name: req.params.name
-                }
-            }).then(users => {
-                res.json(users);
-                return;
-            }).catch(err => {
-                res.status(500).send(`Error retrieving users from the database: ${err}`);
-                return;
-            });
-        } else {
-            res.status(403).send('Access forbidden. Check API key validity. Request an API key: info@heigit.org');
-            return;
         }
     });
 
