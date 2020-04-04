@@ -24,7 +24,7 @@
         "body-parser": "^1.19.0",
         "express": "^4.17.1",
         "geojson-rewind": "^0.2.0",
-        "minimist": "^1.2.2",
+        "minimist": "^1.2.3",
         "morgan": "^1.9.1",
         "sequelize": "^4.44.3",
         "serve-index": "^1.9.1",
