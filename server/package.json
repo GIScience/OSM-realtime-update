@@ -26,7 +26,7 @@
         "geojson-rewind": "^0.2.0",
         "minimist": "^1.2.3",
         "morgan": "^1.9.1",
-        "sequelize": "^4.44.3",
+        "sequelize": "^5.15.1",
         "serve-index": "^1.9.1",
         "sqlite3": "^4.1.1",
         "wellknown": "^0.5.0",
