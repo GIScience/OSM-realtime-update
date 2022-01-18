@@ -1,4 +1,4 @@
-FROM node
+FROM node:16.8
 EXPOSE 1234
 RUN apt-get update
 RUN apt-get install -y osmctools
